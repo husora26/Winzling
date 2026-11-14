@@ -1,0 +1,2075 @@
+<title>Winzling</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: Vollbild-Spielfläche, darüber schwebende HUD-Elemente und ein Menü wie ein Notizzettel auf dem Schreibtisch. */
+:root {
+  --ink: #1d1a17;
+  --paper: #fbf3dc;
+  --pencil: #f5b82e;
+  --pencil-dark: #c98a0c;
+  --eraser: #e86a6a;
+  --mint: #5fc9a8;
+  --glass: rgba(24, 20, 16, 0.62);
+  --glass-line: rgba(251, 243, 220, 0.18);
+  --text-on-glass: #fbf3dc;
+  --muted-on-glass: #cfc3a6;
+  --font-display: "Bungee", "Impact", "Arial Black", sans-serif;
+  --font-body: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: #0f0d0b;
+  color: var(--text-on-glass);
+  font-family: var(--font-body);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; font-variant-numeric: tabular-nums; }
+#hud[hidden] { display: none !important; }
+.hud-box {
+  position: absolute;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  backdrop-filter: blur(4px);
+}
+#hud-tl { top: calc(12px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); max-width: calc(50vw - 40px); }
+#hud-tr { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); text-align: right; max-width: calc(50vw - 40px); }
+#hud-bl { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); width: min(260px, 40vw); }
+#hud-br { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); text-align: right; max-width: 44vw; }
+.hud-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-on-glass); }
+.hud-big { font-family: var(--font-display); font-size: 22px; line-height: 1.1; }
+#wave-line { font-family: var(--font-display); font-size: 16px; }
+#scale-line { font-size: 12px; color: var(--muted-on-glass); margin-top: 2px; }
+#hp-bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,0.12); overflow: hidden; margin-top: 4px; }
+#hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--eraser), var(--pencil)); transition: width 0.15s; }
+#crosshair {
+  position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%);
+}
+#crosshair::before, #crosshair::after {
+  content: ""; position: absolute; background: var(--paper); box-shadow: 0 0 2px #000;
+}
+#crosshair::before { left: 10px; top: 2px; width: 2px; height: 18px; }
+#crosshair::after { top: 10px; left: 2px; height: 2px; width: 18px; }
+#crosshair.hit::before, #crosshair.hit::after { background: var(--eraser); }
+#vignette { position: absolute; inset: 0; box-shadow: inset 0 0 120px 40px rgba(232, 106, 106, 0); transition: box-shadow 0.25s; }
+#toast {
+  position: absolute; left: 50%; top: 22%; transform: translateX(-50%);
+  font-family: var(--font-display); font-size: clamp(18px, 4vw, 30px); text-align: center;
+  color: var(--paper); text-shadow: 0 2px 0 var(--ink), 0 0 18px rgba(0,0,0,0.6);
+  opacity: 0; transition: opacity 0.3s; width: min(90vw, 700px); text-wrap: balance;
+}
+#toast.show { opacity: 1; }
+#toast small { display: block; font-family: var(--font-body); font-size: 15px; font-weight: 500; margin-top: 6px; }
+
+/* ---------- Overlays (Menü, Kalibrierung, Pause) ---------- */
+.overlay {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+  overflow-y: auto;
+}
+.overlay.dim { background: radial-gradient(ellipse at center, rgba(15,13,11,0.25), rgba(15,13,11,0.8)); }
+.note {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  width: min(560px, 100%);
+  border-radius: 4px;
+  padding: 28px 28px 24px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.55), 0 2px 0 rgba(0,0,0,0.2);
+  transform: rotate(-0.6deg);
+  background-image: repeating-linear-gradient(0deg, transparent 0 27px, rgba(80,120,190,0.18) 27px 28px);
+  background-position: 0 14px;
+}
+.note::before {
+  content: ""; position: absolute; top: -12px; left: 50%; width: 120px; height: 26px; transform: translateX(-50%) rotate(2deg);
+  background: rgba(245, 184, 46, 0.75); box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.note h1 { font-family: var(--font-display); font-size: clamp(38px, 9vw, 58px); line-height: 0.95; margin: 0; letter-spacing: 0.01em; }
+.note h1 .tiny { font-size: 0.42em; vertical-align: super; color: var(--pencil-dark); }
+.note h2 { font-family: var(--font-display); font-size: 20px; margin: 0 0 8px; text-wrap: balance; }
+.tagline { font-size: 17px; font-weight: 500; margin: 10px 0 18px; text-wrap: balance; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  appearance: none; border: 2px solid var(--ink); border-radius: 8px; cursor: pointer;
+  font-family: var(--font-display); font-size: 15px; padding: 11px 16px; color: var(--ink);
+  background: #fff; box-shadow: 3px 3px 0 var(--ink); transition: transform 0.08s, box-shadow 0.08s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.btn:focus-visible { outline: 3px solid var(--mint); outline-offset: 2px; }
+.btn.primary { background: var(--pencil); }
+.btn.small { font-size: 13px; padding: 7px 10px; box-shadow: 2px 2px 0 var(--ink); }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.controls-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; margin: 16px 0 0; }
+.controls-list kbd {
+  font-family: var(--font-body); font-weight: 700; font-size: 12px; background: #fff; border: 1px solid var(--ink);
+  border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; white-space: nowrap;
+}
+details { margin-top: 16px; font-size: 14px; line-height: 1.5; }
+details summary { cursor: pointer; font-weight: 700; }
+details ol { padding-left: 20px; margin: 8px 0; }
+details li { margin-bottom: 4px; }
+.fine { font-size: 12.5px; color: #5b5146; margin-top: 12px; line-height: 1.45; }
+#file-input { display: none; }
+.err { color: #b3261e; font-weight: 500; font-size: 14px; margin-top: 10px; }
+
+/* Kalibrierungs-Panel */
+#calib { position: fixed; inset: auto 0 0 auto; pointer-events: none; padding: 12px; padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+#calib .note { pointer-events: auto; width: min(360px, calc(100vw - 24px)); transform: none; padding: 18px; max-height: calc(100vh - 40px); overflow-y: auto; }
+#calib .note::before { display: none; }
+.field { display: grid; gap: 6px; margin-top: 12px; font-size: 14px; }
+.field > span { font-weight: 700; }
+.field input[type="number"] {
+  font: inherit; padding: 6px 8px; border: 2px solid var(--ink); border-radius: 6px; width: 110px; background: #fff; color: var(--ink);
+}
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--pencil-dark); }
+.dims { font-variant-numeric: tabular-nums; font-size: 13px; background: rgba(245,184,46,0.25); border-radius: 6px; padding: 6px 8px; margin-top: 10px; }
+
+/* Touch-Steuerung */
+#touch { position: fixed; inset: 0; pointer-events: none; }
+#touch[hidden] { display: none !important; }
+.tbtn {
+  position: absolute; pointer-events: auto; width: 74px; height: 74px; border-radius: 50%;
+  background: var(--glass); border: 2px solid var(--glass-line); color: var(--paper);
+  font-family: var(--font-display); font-size: 12px; display: grid; place-items: center;
+}
+#t-fire { right: calc(24px + env(safe-area-inset-right, 0px)); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); width: 88px; height: 88px; background: rgba(232,106,106,0.55); }
+#t-jump { right: calc(122px + env(safe-area-inset-right, 0px)); bottom: calc(40px + env(safe-area-inset-bottom, 0px)); }
+#t-reload { right: calc(24px + env(safe-area-inset-right, 0px)); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 60px; height: 60px; font-size: 10px; }
+#t-pause { left: 50%; transform: translateX(-50%); top: calc(10px + env(safe-area-inset-top, 0px)); width: 44px; height: 44px; font-size: 16px; }
+#t-stick { position: absolute; width: 110px; height: 110px; border-radius: 50%; border: 2px solid var(--glass-line); background: rgba(24,20,16,0.3); display: none; }
+#t-knob { position: absolute; width: 46px; height: 46px; border-radius: 50%; background: var(--pencil); left: 32px; top: 32px; opacity: 0.85; }
+.touch-only { display: none; }
+@media (prefers-reduced-motion: reduce) { .note { transform: none; } .btn { transition: none; } }
+@media (max-width: 640px) {
+  .note { padding: 22px 18px 18px; }
+  .controls-list { font-size: 13px; }
+  #hud-bl { width: 44vw; }
+  .hud-box { padding: 6px 9px; }
+  .hud-big { font-size: 18px; }
+  #wave-line { font-size: 13px; }
+  #scale-line { font-size: 10.5px; line-height: 1.3; }
+  /* Kalibrierung als Blatt am unteren Rand, damit der Scan sichtbar bleibt */
+  #calib { inset: auto 0 0 0; }
+  #calib .note { width: 100%; max-height: 54vh; padding: 14px; }
+}
+/* Touch-Geräte: Tasten oberhalb von Lebenskraft und Munition, Tastatur-Hilfe durch Touch-Hilfe ersetzt */
+@media (pointer: coarse) {
+  .kb-only { display: none !important; }
+  .touch-only { display: grid; }
+  #t-reload { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  #t-jump { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); right: calc(100px + env(safe-area-inset-right, 0px)); }
+  #t-fire { bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
+}
+</style>
+
+<div id="stage"></div>
+
+<div id="hud" hidden>
+  <div id="vignette"></div>
+  <div id="crosshair"></div>
+  <div class="hud-box" id="hud-tl">
+    <div id="wave-line">Welle 1</div>
+    <div id="scale-line">Höhe über dem Boden: 0,0 cm</div>
+  </div>
+  <div class="hud-box" id="hud-tr">
+    <div class="hud-label">Punkte</div>
+    <div class="hud-big" id="score">0</div>
+  </div>
+  <div class="hud-box" id="hud-bl">
+    <div class="hud-label">Lebenskraft</div>
+    <div id="hp-bar"><div id="hp-fill"></div></div>
+  </div>
+  <div class="hud-box" id="hud-br">
+    <div class="hud-label">Nadelschleuder</div>
+    <div class="hud-big" id="ammo">16 / 16</div>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<div id="touch" hidden>
+  <div id="t-stick"><div id="t-knob"></div></div>
+  <button class="tbtn" id="t-fire" type="button">Feuer</button>
+  <button class="tbtn" id="t-jump" type="button">Sprung</button>
+  <button class="tbtn" id="t-reload" type="button">Laden</button>
+  <button class="tbtn" id="t-pause" type="button" aria-label="Pause">II</button>
+</div>
+
+<div class="overlay dim" id="menu">
+  <div class="note">
+    <h1>Winzling<span class="tiny"> 2 cm</span></h1>
+    <p class="tagline">Du bist so groß wie ein Radiergummi. Dein Zimmer ist ein Kontinent, und unter dem Bett wohnen die Fusselbiester.</p>
+    <div class="btn-row">
+      <button class="btn primary" id="btn-demo" type="button">Im Demo-Zimmer spielen</button>
+      <button class="btn" id="btn-load" type="button">Eigenen Raum-Scan laden</button>
+      <input type="file" id="file-input" accept=".glb,.gltf,.obj,.ply">
+    </div>
+    <div class="err" id="load-error" hidden></div>
+    <div class="controls-list kb-only">
+      <kbd>W A S D</kbd><span>Laufen</span>
+      <kbd>Maus</kbd><span>Umsehen, Linksklick schießt</span>
+      <kbd>Leertaste</kbd><span>Springen. In der Luft halten: Gleiten mit dem Löwenzahnschirm</span>
+      <kbd>Shift</kbd><span>Rennen</span>
+      <kbd>R</kbd><span>Nachladen</span>
+      <kbd>Esc</kbd><span>Pause</span>
+    </div>
+    <div class="controls-list touch-only">
+      <kbd>Links wischen</kbd><span>Laufen, ganz außen rennen</span>
+      <kbd>Rechts wischen</kbd><span>Umsehen</span>
+      <kbd>Feuer</kbd><span>Schießen</span>
+      <kbd>Sprung</kbd><span>Springen. In der Luft gedrückt halten: Gleiten mit dem Löwenzahnschirm</span>
+      <kbd>Laden</kbd><span>Nachladen</span>
+      <kbd>II</kbd><span>Pause</span>
+    </div>
+    <details id="howto">
+      <summary>So wird aus Handyfotos dein Spielzimmer</summary>
+      <ol>
+        <li>Räum den Boden halbwegs frei und mach das Licht gleichmäßig an.</li>
+        <li>Fotografiere den Raum mit einer Scan-App im Foto-Modus (zum Beispiel Polycam, Scaniverse oder KIRI Engine). Geh langsam im Kreis, 60 bis 200 Fotos, jedes Bild überlappt das vorige deutlich. Halte das Handy auch mal tief über den Boden: dort spielst du später.</li>
+        <li>Lass die App das 3D-Modell rechnen und exportiere es als <b>GLB</b> (alternativ OBJ oder PLY als Mesh, nicht als Punktwolke).</li>
+        <li>Hier auf „Eigenen Raum-Scan laden“ tippen, Ausrichtung und Raumgröße prüfen, Startpunkt antippen, loslegen.</li>
+      </ol>
+      Ohne App geht es mit der freien Software COLMAP auf einem PC mit Nvidia-Grafikkarte. Das Skript dafür liegt im Projekt neben diesem Spiel.
+    </details>
+    <p class="fine">Maßstab: Dein Winzling ist 2,0 cm groß, seine Augen sind auf 1,75 cm Höhe. Ein Zentimeter für dich fühlt sich an wie 87 cm für einen Menschen. Ein 75 cm hoher Schreibtisch ist für dich ein 66-Meter-Turm.</p>
+  </div>
+</div>
+
+<div id="calib" hidden>
+  <div class="note">
+    <h2>Scan einrichten</h2>
+    <div style="font-size:13px" id="calib-file">datei.glb</div>
+    <div class="field">
+      <span>Ausrichtung</span>
+      <div class="btn-row">
+        <button class="btn small" id="rot-x" type="button">Kippen X −90°</button>
+        <button class="btn small" id="rot-z" type="button">Kippen Z 90°</button>
+        <button class="btn small" id="rot-y" type="button">Drehen 90°</button>
+      </div>
+      <div style="font-size:12.5px">Das Gitter ist der Boden. Kipp den Scan, bis der Fußboden auf dem Gitter liegt.</div>
+    </div>
+    <div class="field">
+      <span>Größe</span>
+      <label class="check"><input type="checkbox" id="metric"> Scan ist schon in echten Metern (LiDAR)</label>
+      <label class="check" id="len-wrap">Längste Raumseite <input type="number" id="room-len" min="0.5" max="30" step="0.1" value="4"> m</label>
+    </div>
+    <div class="dims" id="calib-dims">Raum: –</div>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="unlit" checked> Originalfarben des Scans (unbeleuchtet)</label>
+    <div class="field">
+      <span>Startpunkt</span>
+      <div style="font-size:12.5px">Tippe im Scan auf eine Stelle am Boden. Der gelbe Pin zeigt die Stelle, die kleine Figur darunter ist du in Originalgröße.</div>
+      <div class="err" id="spawn-msg" hidden style="margin-top:0;font-size:12.5px"></div>
+    </div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn primary" id="calib-play" type="button">Spielen</button>
+      <button class="btn" id="calib-back" type="button">Zurück</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay dim" id="pause" hidden>
+  <div class="note" style="width:min(420px,100%)">
+    <h2 id="pause-title">Pause</h2>
+    <p id="pause-text" style="margin:0 0 14px">Die Fusselbiester warten auf dich.</p>
+    <div class="btn-row">
+      <button class="btn primary" id="btn-resume" type="button">Weiterspielen</button>
+      <button class="btn" id="btn-restart" type="button">Neu starten</button>
+      <button class="btn" id="btn-menu" type="button">Hauptmenü</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+    "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { MeshBVH, computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+THREE.Mesh.prototype.raycast = acceleratedRaycast;
+
+// ================================================================
+// Maßstab: 1 Einheit = 1 Meter. Der Winzling ist 2 cm groß.
+// ================================================================
+const P = {
+  height: 0.020,
+  radius: 0.0035,
+  eye: 0.0175,
+  walk: 0.075,     // m/s, etwa 3,7 Körperlängen pro Sekunde
+  sprint: 0.16,
+  jump: 0.85,      // m/s Absprung, reicht für ~3,7 cm Sprunghöhe
+  gravity: 9.81,
+  terminal: 1.4,   // Luftwiderstand: kleine Körper fallen langsam
+  glideTerminal: 0.11,
+};
+const HUMAN_FACTOR = 1.75 / P.height; // 87,5
+
+const $ = id => document.getElementById(id);
+const fmt = (n, d = 1) => n.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+// ---------------- Renderer & Kameras ----------------
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('stage').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1612);
+
+const playCam = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.0004, 40);
+const orbitCam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.01, 200);
+scene.add(playCam);
+let activeCam = orbitCam;
+
+const orbit = new OrbitControls(orbitCam, renderer.domElement);
+orbit.enableDamping = true;
+orbit.enabled = false;
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  for (const c of [playCam, orbitCam]) { c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix(); }
+});
+
+// ---------------- Prozedurale Texturen ----------------
+function canvasTex(w, h, draw, repeat = [1, 1]) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(repeat[0], repeat[1]);
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+function rand(a, b) { return a + Math.random() * (b - a); }
+function seeded(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+
+const woodTex = canvasTex(1024, 1024, (g, w, h) => {
+  const r = seeded(7);
+  const plankH = 128; // 0,15 m bei 1,2 m Kachel
+  for (let y = 0; y < h; y += plankH) {
+    let x = -Math.floor(r() * 600);
+    while (x < w) {
+      const len = 500 + r() * 500;
+      const base = [168 + r() * 30, 116 + r() * 22, 70 + r() * 16];
+      g.fillStyle = `rgb(${base[0]|0},${base[1]|0},${base[2]|0})`;
+      g.fillRect(x, y, len, plankH);
+      for (let i = 0; i < 60; i++) {
+        const gy = y + r() * plankH;
+        g.strokeStyle = `rgba(70,40,15,${0.05 + r() * 0.12})`;
+        g.lineWidth = 0.6 + r() * 1.6;
+        g.beginPath();
+        const amp = 1 + r() * 3, freq = 0.004 + r() * 0.01, ph = r() * 6;
+        for (let xx = x; xx < x + len; xx += 8) {
+          const yy = gy + Math.sin(xx * freq + ph) * amp;
+          xx === x ? g.moveTo(xx, yy) : g.lineTo(xx, yy);
+        }
+        g.stroke();
+      }
+      g.fillStyle = 'rgba(40,22,8,0.85)';
+      g.fillRect(x, y, 2, plankH);
+      x += len;
+    }
+    g.fillStyle = 'rgba(35,20,8,0.9)';
+    g.fillRect(0, y, w, 3);
+  }
+  // Staubkörner und Kratzer: aus 2 cm Höhe sieht man alles
+  for (let i = 0; i < 2500; i++) {
+    g.fillStyle = r() < 0.5 ? 'rgba(255,240,210,0.25)' : 'rgba(30,18,8,0.25)';
+    g.fillRect(r() * w, r() * h, 1 + r() * 2, 1 + r() * 2);
+  }
+}, [4 / 1.2, 3.5 / 1.2]);
+
+const rugTex = canvasTex(1024, 704, (g, w, h) => {
+  const r = seeded(3);
+  g.fillStyle = '#2f5d73'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#e9d8b0'; g.fillRect(40, 40, w - 80, h - 80);
+  g.fillStyle = '#b8483c'; g.fillRect(70, 70, w - 140, h - 140);
+  g.fillStyle = '#2f5d73';
+  for (let x = 120; x < w - 100; x += 96) for (let y = 120; y < h - 100; y += 96) {
+    g.save(); g.translate(x + 24, y + 24); g.rotate(Math.PI / 4); g.fillRect(-20, -20, 40, 40);
+    g.fillStyle = '#e9d8b0'; g.fillRect(-8, -8, 16, 16); g.fillStyle = '#2f5d73'; g.restore();
+  }
+  for (let i = 0; i < 40000; i++) {
+    g.fillStyle = `rgba(${r() < 0.5 ? '0,0,0' : '255,255,255'},${0.05 + r() * 0.08})`;
+    g.fillRect(r() * w, r() * h, 1, 2 + r() * 3);
+  }
+});
+
+const wallTex = canvasTex(512, 512, (g, w, h) => {
+  const r = seeded(11);
+  g.fillStyle = '#d9d3c4'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 9000; i++) {
+    g.fillStyle = `rgba(${r() < 0.5 ? '90,80,60' : '255,255,250'},${0.03 + r() * 0.05})`;
+    g.fillRect(r() * w, r() * h, 2, 2);
+  }
+}, [4, 2.5]);
+
+const fuzzTex = canvasTex(256, 256, (g, w, h) => {
+  const r = seeded(5);
+  g.fillStyle = '#9b93a3'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4000; i++) {
+    g.strokeStyle = `rgba(${r() < 0.5 ? '60,55,70' : '230,225,235'},${0.2 + r() * 0.3})`;
+    g.beginPath(); const x = r() * w, y = r() * h; g.moveTo(x, y);
+    g.lineTo(x + rand(-6, 6), y + rand(-6, 6)); g.stroke();
+  }
+});
+
+function letterTex(ch, bg) {
+  return canvasTex(128, 128, (g) => {
+    g.fillStyle = bg; g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = '#fbf3dc'; g.lineWidth = 8; g.strokeRect(8, 8, 112, 112);
+    g.fillStyle = '#fbf3dc'; g.font = 'bold 84px Rubik, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(ch, 64, 70);
+  });
+}
+
+// ---------------- Demo-Zimmer ----------------
+const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...o });
+
+function buildDemoRoom() {
+  const root = new THREE.Group();
+  const solid = new THREE.Group(); // alles hier drin ist begehbar / kollidiert
+  const deco = new THREE.Group();
+  root.add(solid, deco);
+
+  const add = (geo, mat, x, y, z, parent = solid, opts = {}) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    if (opts.rx) m.rotation.x = opts.rx;
+    if (opts.ry) m.rotation.y = opts.ry;
+    if (opts.rz) m.rotation.z = opts.rz;
+    m.castShadow = opts.cast !== false;
+    m.receiveShadow = true;
+    parent.add(m);
+    return m;
+  };
+  // Quader, y = Unterkante
+  const box = (w, h, d, mat, x, yb, z, opts = {}) => add(new THREE.BoxGeometry(w, h, d), mat, x, yb + h / 2, z, opts.parent || solid, opts);
+  // Rampe zwischen zwei Punkten (Oberseite verbindet a und b)
+  const ramp = (a, b, width, thick, mat) => {
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b);
+    const len = A.distanceTo(B);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(width, thick, len), mat);
+    const mid = A.clone().add(B).multiplyScalar(0.5);
+    m.position.copy(mid);
+    m.lookAt(B);
+    m.translateY(-thick / 2);
+    m.castShadow = m.receiveShadow = true;
+    solid.add(m);
+    return m;
+  };
+
+  const W = 4, D = 3.5, H = 2.5;
+  // Boden: 2 cm dicke Platte, Oberseite bei y = 0 (eine dünne Ebene würde man bei niedriger Bildrate durchstoßen)
+  box(W, 0.02, D, M(0xffffff, { map: woodTex, roughness: 0.6 }), 0, -0.02, 0, { cast: false });
+  // Wände (Boxen außen) und Decke
+  const wallMat = M(0xffffff, { map: wallTex, roughness: 0.95 });
+  box(W + 0.2, H, 0.1, wallMat, 0, 0, -D / 2 - 0.05, { cast: false });
+  box(W + 0.2, H, 0.1, wallMat, 0, 0, D / 2 + 0.05, { cast: false });
+  box(0.1, H, D, wallMat, -W / 2 - 0.05, 0, 0, { cast: false });
+  box(0.1, H, D, wallMat, W / 2 + 0.05, 0, 0, { cast: false });
+  box(W, 0.05, D, M(0xece6d8), 0, H, 0, { cast: false });
+  // Fußleisten
+  const skirt = M(0xf3efe6, { roughness: 0.5 });
+  box(W, 0.07, 0.014, skirt, 0, 0, -D / 2 + 0.007, { cast: false });
+  box(W, 0.07, 0.014, skirt, 0, 0, D / 2 - 0.007, { cast: false });
+  box(0.014, 0.07, D, skirt, -W / 2 + 0.007, 0, 0, { cast: false });
+  box(0.014, 0.07, D, skirt, W / 2 - 0.007, 0, 0, { cast: false });
+
+  // Teppich (3 mm hoch, man kann draufsteigen)
+  box(1.6, 0.003, 1.1, M(0xffffff, { map: rugTex, roughness: 1 }), 0.1, 0, 0.45, { cast: false });
+
+  // Fenster an der Rückwand
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.0), new THREE.MeshBasicMaterial({ color: 0xcfe6ff }));
+  glow.position.set(0.9, 1.55, -D / 2 + 0.002); deco.add(glow);
+  const frame = M(0xf4f1ea, { roughness: 0.4 });
+  box(1.3, 0.05, 0.06, frame, 0.9, 1.02, -D / 2 + 0.03);
+  box(1.3, 0.05, 0.06, frame, 0.9, 2.05, -D / 2 + 0.03, { cast: false });
+  box(0.05, 1.0, 0.04, frame, 0.27, 1.05, -D / 2 + 0.02, { cast: false });
+  box(0.05, 1.0, 0.04, frame, 1.53, 1.05, -D / 2 + 0.02, { cast: false });
+  box(0.03, 1.0, 0.03, frame, 0.9, 1.05, -D / 2 + 0.015, { cast: false });
+
+  // Bett (links), auf Beinen: darunter ist eine dunkle Höhle
+  const woodDark = M(0x6b4a33, { roughness: 0.6 });
+  const bx = -1.5, bz = -0.75;
+  for (const [dx, dz] of [[-0.46, -0.96], [0.46, -0.96], [-0.46, 0.96], [0.46, 0.96]]) box(0.06, 0.25, 0.06, woodDark, bx + dx, 0, bz + dz);
+  box(1.0, 0.12, 2.0, woodDark, bx, 0.25, bz);
+  box(0.96, 0.18, 1.94, M(0xf2efe9, { roughness: 0.95 }), bx, 0.37, bz);
+  box(0.6, 0.1, 0.35, M(0xffffff, { roughness: 1 }), bx, 0.55, bz - 0.75);
+  box(1.02, 0.04, 1.25, M(0x4f7fa8, { roughness: 1 }), bx, 0.55, bz + 0.33);
+  box(1.0, 0.9, 0.05, woodDark, bx, 0, -D / 2 + 0.025);
+  // herunterhängende Decke als Aufstieg aufs Bett
+  ramp([-0.62, 0, 0.75], [-1.0, 0.59, 0.12], 0.7, 0.02, M(0x4f7fa8, { roughness: 1 }));
+  // Schuhkarton unter dem Bett
+  box(0.33, 0.12, 0.2, M(0xc9a27a, { roughness: 0.9 }), -1.6, 0, -0.3, { ry: 0.3 });
+  // Socke
+  const sock = add(new THREE.CapsuleGeometry(0.035, 0.16, 6, 12), M(0x8f3b5e, { roughness: 1 }), -1.2, 0.02, 0.6, solid, { rz: Math.PI / 2, ry: 0.7 });
+  sock.scale.set(1, 1, 0.55);
+
+  // Schreibtisch (hinten rechts)
+  const desk = M(0xd8c3a0, { roughness: 0.55 });
+  const dx0 = 0.9, dz0 = -1.4;
+  box(1.4, 0.03, 0.7, desk, dx0, 0.72, dz0);
+  for (const [ox, oz] of [[-0.66, -0.31], [0.66, -0.31], [-0.66, 0.31], [0.66, 0.31]]) box(0.04, 0.72, 0.04, M(0x2b2b2b, { metalness: 0.6, roughness: 0.4 }), dx0 + ox, 0, dz0 + oz);
+  // Stuhl
+  const chairMat = M(0x3a6d5c, { roughness: 0.7 });
+  const cx = 0.8, cz = -0.85;
+  box(0.45, 0.04, 0.45, chairMat, cx, 0.43, cz);
+  for (const [ox, oz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) box(0.03, 0.43, 0.03, M(0x2b2b2b, { metalness: 0.6, roughness: 0.4 }), cx + ox, 0, cz + oz);
+  box(0.03, 0.42, 0.45, chairMat, cx - 0.21, 0.47, cz);   // Lehne links, damit die Rampe zum Tisch vorne frei bleibt
+
+  // Aufstieg: Buch auf Bücherstapel, Lineal zum Stuhl, Buch zum Tisch
+  const bookCols = [0xb8483c, 0x2f5d73, 0xe0a63a, 0x5f8f4e, 0x7b5aa6, 0xd9d0bc, 0x333a4a];
+  const stack = [[0.24, 0.035, 0.17], [0.22, 0.03, 0.16], [0.21, 0.04, 0.15]];
+  let sy = 0;
+  stack.forEach((s, i) => { box(s[0], s[1], s[2], M(bookCols[i], { roughness: 0.8 }), 1.5, sy, -0.85, { ry: (i - 1) * 0.12 }); sy += s[1]; });
+  ramp([1.5, 0.0, -0.45], [1.5, sy, -0.78], 0.15, 0.012, M(bookCols[4], { roughness: 0.8 }));
+  // Lineal endet genau an der Sitzkante (x = 1,025), Buch-Rampe führt vom Sitz (36°) bis zur Vorderkante der Tischplatte (z = -1,05)
+  ramp([1.5, sy, -0.85], [1.025, 0.472, -0.85], 0.035, 0.004, M(0xe8e2c8, { roughness: 0.4 }));
+  ramp([0.8, 0.47, -0.67], [0.8, 0.752, -1.049], 0.16, 0.014, M(bookCols[1], { roughness: 0.8 }));
+
+  // Schreibtisch-Dinge
+  const top = 0.75;
+  box(0.34, 0.016, 0.24, M(0x8a8f96, { metalness: 0.7, roughness: 0.35 }), 1.2, top, -1.5);
+  const screen = box(0.34, 0.22, 0.008, M(0x1c1f24, { metalness: 0.5, roughness: 0.3 }), 1.2, top + 0.016, -1.62, { rx: -0.25 });
+  // Tasse (offen, man kann hineinfallen)
+  const mugMat = M(0xf1ece2, { roughness: 0.3, side: THREE.DoubleSide });
+  add(new THREE.CylinderGeometry(0.042, 0.04, 0.1, 32, 1, true), mugMat, 0.5, top + 0.05, -1.35);
+  add(new THREE.CylinderGeometry(0.04, 0.04, 0.006, 32), mugMat, 0.5, top + 0.003, -1.35);
+  add(new THREE.TorusGeometry(0.025, 0.007, 8, 20, Math.PI), mugMat, 0.542, top + 0.05, -1.35, solid, { rz: -Math.PI / 2 });
+  // Stifte (Sechskant, 8 mm dick)
+  const pencilCols = [0xf5b82e, 0x5fc9a8, 0xe86a6a, 0x4f7fa8];
+  for (let i = 0; i < 4; i++) {
+    add(new THREE.CylinderGeometry(0.004, 0.004, 0.175, 6), M(pencilCols[i], { roughness: 0.5 }), 0.62 + i * 0.03, top + 0.004, -1.15 + i * 0.01, solid, { rz: Math.PI / 2, ry: 0.2 * i - 0.3 });
+  }
+  box(0.21, 0.012, 0.297, M(0xf6f3ea, { roughness: 0.9 }), 0.45, top, -1.62, { ry: 0.1 }); // DIN-A4-Block
+  box(0.05, 0.01, 0.02, M(0xe86a6a, { roughness: 0.9 }), 0.9, top, -1.25, { ry: 0.6 }); // Radiergummi
+  // Münzen: 1 Euro = 23,25 mm, 2,33 mm dick
+  const coin = M(0xd8b45a, { metalness: 0.9, roughness: 0.3 });
+  for (const [x, z] of [[1.0, -1.18], [1.03, -1.2], [-0.2, 0.9], [0.4, 1.2]]) add(new THREE.CylinderGeometry(0.0116, 0.0116, 0.0023, 28), coin, x, (z > 0 ? 0.003 : top) + 0.0012, z);
+  // Würfel
+  box(0.016, 0.016, 0.016, M(0xfbf3dc, { roughness: 0.4 }), 0.95, top, -1.32, { ry: 0.4 });
+  // Schreibtischlampe
+  const lampMat = M(0x2b2b2b, { metalness: 0.5, roughness: 0.4 });
+  add(new THREE.CylinderGeometry(0.07, 0.08, 0.02, 24), lampMat, 1.45, top + 0.01, -1.6);
+  add(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 8), lampMat, 1.45, top + 0.22, -1.6);
+  const shade = add(new THREE.ConeGeometry(0.08, 0.12, 24, 1, true), M(0xf5b82e, { roughness: 0.5, side: THREE.DoubleSide }), 1.38, top + 0.4, -1.5, deco, { rx: 0.5, rz: 0.4 });
+  const lampLight = new THREE.PointLight(0xffd59a, 0.9, 0, 2);
+  lampLight.position.set(1.36, top + 0.33, -1.47);
+  deco.add(lampLight);
+
+  // Bücherregal (rechte Wand)
+  const shelfMat = M(0xf4f1ea, { roughness: 0.6 });
+  const shx = 1.86, shz = 0.15;
+  box(0.28, 2.0, 0.02, shelfMat, shx, 0, shz - 0.5);
+  box(0.28, 2.0, 0.02, shelfMat, shx, 0, shz + 0.5);
+  const rs = seeded(21);
+  for (const y of [0.0, 0.4, 0.8, 1.2, 1.6, 1.98]) {
+    box(0.28, 0.025, 1.0, shelfMat, shx, y, shz);
+    if (y > 1.9) continue;
+    let z = shz - 0.47;
+    while (z < shz + 0.4) {
+      const t = 0.02 + rs() * 0.035, hh = 0.2 + rs() * 0.12;
+      const lean = rs() < 0.08 ? 0.25 : 0;
+      box(0.2, hh, t, M(bookCols[(rs() * bookCols.length) | 0], { roughness: 0.8 }), shx - 0.02, y + 0.025, z + t / 2, { rx: lean });
+      z += t + 0.003 + (lean ? 0.06 : 0);
+    }
+  }
+  // Rampe auf das unterste Regalbrett
+  ramp([1.45, 0, 0.2], [1.72, 0.025, 0.2], 0.08, 0.004, M(0xe8e2c8, { roughness: 0.4 }));
+
+  // Spielzeug auf dem Boden
+  const letters = [['W', '#b8483c'], ['I', '#2f5d73'], ['N', '#5f8f4e'], ['Z', '#7b5aa6']];
+  letters.forEach(([ch, bg], i) => {
+    const tex = letterTex(ch, bg);
+    box(0.04, 0.04, 0.04, M(0xffffff, { map: tex, roughness: 0.6 }), 0.35 + i * 0.07, 0.003, 0.25 + (i % 2) * 0.03, { ry: i * 0.3 });
+  });
+  box(0.04, 0.04, 0.04, M(0xffffff, { map: letterTex('L', '#e0a63a'), roughness: 0.6 }), 0.43, 0.043, 0.27, { ry: 0.2 });
+  add(new THREE.SphereGeometry(0.1, 32, 16), M(0xe86a6a, { roughness: 0.45 }), -0.4, 0.1, 1.1);
+  // Papierknäuel
+  const paperGeo = new THREE.IcosahedronGeometry(0.035, 1);
+  const pp = paperGeo.attributes.position;
+  for (let i = 0; i < pp.count; i++) { const s = 0.8 + Math.random() * 0.35; pp.setXYZ(i, pp.getX(i) * s, pp.getY(i) * s, pp.getZ(i) * s); }
+  paperGeo.computeVertexNormals();
+  add(paperGeo, M(0xf6f3ea, { roughness: 1, flatShading: true }), 0.9, 0.03, 0.25);
+  add(paperGeo, M(0xf6f3ea, { roughness: 1, flatShading: true }), -0.75, 0.03, -0.2);
+  // Kabel vom Schreibtisch zur Steckdose: ein 6-mm-Hindernis
+  // 'centripetal' vermeidet Schleifen und Überschwingen; zusätzlich wird die Kurve dicht abgetastet und nie unter Kabelradius über dem Boden geführt
+  const cableCtrl = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(1.4, 0.75, -1.72), new THREE.Vector3(1.48, 0.4, -1.73), new THREE.Vector3(1.5, 0.0035, -1.6),
+    new THREE.Vector3(1.2, 0.0035, -0.4), new THREE.Vector3(1.55, 0.0035, 0.9), new THREE.Vector3(1.98, 0.0035, 1.2),
+  ], false, 'centripetal');
+  const cable = new THREE.CatmullRomCurve3(cableCtrl.getPoints(200).map(p => (p.y = Math.max(p.y, 0.0037), p)), false, 'centripetal');
+  add(new THREE.TubeGeometry(cable, 320, 0.003, 8), M(0x222222, { roughness: 0.5 }), 0, 0, 0);
+  box(0.02, 0.08, 0.08, M(0xf4f1ea, { roughness: 0.4 }), 1.99, 0.18, 1.2, { cast: false }); // Steckdose
+  // Bleistift auf dem Boden
+  add(new THREE.CylinderGeometry(0.004, 0.004, 0.175, 6), M(0xf5b82e, { roughness: 0.5 }), 0.15, 0.007, 0.9, solid, { rz: Math.PI / 2, ry: 1.1 });
+
+  // Tür vorne
+  box(0.9, 2.0, 0.04, M(0xe9e4d8, { roughness: 0.5 }), 1.2, 0.012, D / 2 - 0.02, { cast: false });
+
+  // Licht
+  const hemi = new THREE.HemisphereLight(0xfff1dc, 0x4a3a2c, 0.9);
+  deco.add(hemi);
+  const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
+  sun.position.set(0.9, 2.6, -3.5);
+  sun.target.position.set(0.1, 0, 0.6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(isTouch ? 2048 : 4096, isTouch ? 2048 : 4096);
+  const sc = sun.shadow.camera; sc.left = -3; sc.right = 3; sc.top = 3; sc.bottom = -3; sc.near = 0.5; sc.far = 8;
+  sun.shadow.bias = -0.0002; sun.shadow.normalBias = 0.003;
+  deco.add(sun, sun.target);
+  const ceil = new THREE.PointLight(0xfff5e6, 6, 0, 2);
+  ceil.position.set(0, 2.35, 0);
+  deco.add(ceil);
+  const ceilLamp = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.03, 32), new THREE.MeshBasicMaterial({ color: 0xfffaf0 }));
+  ceilLamp.position.set(0, 2.485, 0); deco.add(ceilLamp);
+
+  // Wände dürfen keine Schatten des Sonnenlichts werfen (Fenster)
+  // inner: begehbarer Bereich innerhalb der Fußleisten (für Gegner- und Krümel-Platzierung)
+  const inner = new THREE.Box3(new THREE.Vector3(-W / 2 + 0.08, -0.02, -D / 2 + 0.08), new THREE.Vector3(W / 2 - 0.08, H, D / 2 - 0.08));
+  return { root, solid, inner, spawn: new THREE.Vector3(0.1, 0.01, 0.6), spawnYaw: Math.PI * 0.85, name: 'Demo-Zimmer' };
+}
+
+// ---------------- Kollisions-Geometrie bauen ----------------
+function buildCollider(object) {
+  object.updateMatrixWorld(true);
+  const meshes = [];
+  object.traverse(c => { if (c.isMesh && c.geometry?.attributes?.position) meshes.push(c); });
+  let vCount = 0, iCount = 0;
+  for (const m of meshes) { const g = m.geometry; vCount += g.attributes.position.count; iCount += g.index ? g.index.count : g.attributes.position.count; }
+  const pos = new Float32Array(vCount * 3);
+  const IndexArr = vCount > 65535 ? Uint32Array : Uint16Array;
+  const idx = new IndexArr(iCount);
+  const v = new THREE.Vector3();
+  let vo = 0, io = 0;
+  for (const m of meshes) {
+    const g = m.geometry, pa = g.attributes.position;
+    for (let i = 0; i < pa.count; i++) {
+      v.fromBufferAttribute(pa, i).applyMatrix4(m.matrixWorld);
+      pos[(vo + i) * 3] = v.x; pos[(vo + i) * 3 + 1] = v.y; pos[(vo + i) * 3 + 2] = v.z;
+    }
+    if (g.index) { const ia = g.index.array; for (let i = 0; i < ia.length; i++) idx[io + i] = ia[i] + vo; io += ia.length; }
+    else { for (let i = 0; i < pa.count; i++) idx[io + i] = vo + i; io += pa.count; }
+    vo += pa.count;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  geo.boundsTree = new MeshBVH(geo);
+  geo.computeBoundingBox();
+  const mesh = new THREE.Mesh(geo);
+  mesh.visible = false;
+  return mesh;
+}
+
+// ---------------- Kapsel-/Kugel-Kollision ----------------
+const tmpBox = new THREE.Box3();
+const tmpSeg = new THREE.Line3();
+const tv1 = new THREE.Vector3(), tv2 = new THREE.Vector3(), tNormal = new THREE.Vector3(), tCross = new THREE.Vector3();
+// Kontaktinfo des letzten resolveCapsule-Aufrufs: größte nach oben zeigende Schubrichtung (gy) und deren Richtung
+const contact = { hit: false, gy: -1, n: new THREE.Vector3(0, 1, 0) };
+
+// Schiebt eine Kapsel (Segment a→b, Radius r) aus der Geometrie. Gibt den Korrekturvektor zurück.
+// prevMid: Segmentmitte vor der Bewegung. Damit wird erkannt, von welcher Seite eine Fläche durchstoßen wurde.
+// (closestPointToSegment prüft nur Kanten und Endpunkte, ein Segment mitten durch ein Dreieck bliebe sonst unerkannt.)
+function resolveCapsule(bvh, a, b, r, out, prevMid = null) {
+  tmpSeg.start.copy(a); tmpSeg.end.copy(b);
+  const point = a.distanceToSquared(b) < 1e-12;
+  contact.hit = false; contact.gy = -1; contact.n.set(0, 1, 0);
+  let pushed = false;
+  const apply = (dir, depth) => {
+    tmpSeg.start.addScaledVector(dir, depth);
+    tmpSeg.end.addScaledVector(dir, depth);
+    pushed = true; contact.hit = true;
+    if (dir.y > contact.gy) { contact.gy = dir.y; contact.n.copy(dir); }
+  };
+  for (let iter = 0; iter < 3; iter++) {
+    pushed = false;
+    tmpBox.makeEmpty();
+    tmpBox.expandByPoint(tmpSeg.start); tmpBox.expandByPoint(tmpSeg.end);
+    tmpBox.min.addScalar(-r); tmpBox.max.addScalar(r);
+    bvh.shapecast({
+      intersectsBounds: bx => bx.intersectsBox(tmpBox),
+      intersectsTriangle: tri => {
+        let d;
+        if (point) {
+          tri.closestPointToPoint(tmpSeg.start, tv1);
+          tv2.copy(tmpSeg.start);
+          d = tv1.distanceTo(tv2);
+        } else {
+          // Segment durchstößt das Dreieck: Anfang und Ende liegen auf verschiedenen Seiten der Ebene
+          tri.getNormal(tNormal);
+          const pd = tNormal.dot(tri.a);
+          const dA = tNormal.dot(tmpSeg.start) - pd, dB = tNormal.dot(tmpSeg.end) - pd;
+          if (dA * dB < 0) {
+            tCross.lerpVectors(tmpSeg.start, tmpSeg.end, dA / (dA - dB));
+            if (tri.containsPoint(tCross)) {
+              let side = 0;
+              if (prevMid) side = Math.sign(tNormal.dot(prevMid) - pd);
+              if (!side) side = Math.abs(dA) >= Math.abs(dB) ? Math.sign(dA) : Math.sign(dB);
+              const push = side > 0 ? r - Math.min(dA, dB) : Math.max(dA, dB) + r;
+              apply(tNormal.multiplyScalar(side), push);
+              return;
+            }
+          }
+          d = tri.closestPointToSegment(tmpSeg, tv1, tv2);
+        }
+        if (d < r) {
+          const dir = tv2.sub(tv1);
+          if (dir.lengthSq() < 1e-14) tri.getNormal(dir); else dir.normalize();
+          apply(dir, r - d);
+        }
+      },
+    });
+    if (!pushed) break;
+  }
+  return out.copy(tmpSeg.start).sub(a);
+}
+
+// ---------------- Bewegung mit Kollision ----------------
+// Fester Physikschritt, damit Verhalten und Durchstoßschutz nicht von der Bildrate abhängen.
+const PHYS_DT = 1 / 240, MAX_PHYS_STEPS = 12;
+const GROUND_NY = 0.6;      // ab dieser Normale (≈ 53°) zählt eine Fläche als Boden, steilere rutscht
+const STICK = 0.001;        // Bodentest: so weit wird nach unten getastet (1 mm Toleranz, damit man an Kanten nicht flackert)
+const SNAP_DOWN = 0.0035;   // beim Abwärtsgehen so weit am Boden "kleben"
+const STEP_UP = 0.006;      // maximale Stufenhöhe (Teppichkante, Scan-Rauschen)
+
+const mvStep = new THREE.Vector3(), mvPrev = new THREE.Vector3(), mvA = new THREE.Vector3(), mvB = new THREE.Vector3(), mvC = new THREE.Vector3();
+const mvStart = new THREE.Vector3(), mvFirst = new THREE.Vector3(), mvSave = new THREE.Vector3(), mvDelta = new THREE.Vector3();
+const newMove = () => ({ hit: false, gy: -1, n: new THREE.Vector3(0, 1, 0), pushed: new THREE.Vector3() });
+const moveMain = newMove(), moveAux = newMove(), moveProbe = newMove();
+
+// Bewegt einen Körper (Segment pos+y0 … pos+y1, Radius r) um delta und löst dabei Kollisionen.
+// Die Strecke wird in Teilschritte von höchstens r/2 zerlegt, so kann kein Segment mehr ein Dreieck überspringen.
+function moveBody(bvh, b, delta, res) {
+  res.hit = false; res.gy = -1; res.pushed.set(0, 0, 0);
+  const len = delta.length();
+  if (len < 1e-12) return res;
+  const n = Math.min(24, Math.max(1, Math.ceil(len / (0.5 * b.r))));
+  mvStep.copy(delta).divideScalar(n);
+  for (let i = 0; i < n; i++) {
+    mvPrev.copy(b.pos); mvPrev.y += (b.y0 + b.y1) / 2;
+    b.pos.add(mvStep);
+    mvA.copy(b.pos); mvA.y += b.y0;
+    mvB.copy(b.pos); mvB.y += b.y1;
+    resolveCapsule(bvh, mvA, mvB, b.r, mvC, mvPrev);
+    if (contact.hit) {
+      b.pos.add(mvC);
+      res.hit = true; res.pushed.add(mvC);
+      if (contact.gy > res.gy) { res.gy = contact.gy; res.n.copy(contact.n); }
+    }
+  }
+  return res;
+}
+
+// Steht der Körper auf einer begehbaren Fläche? Tastet kurz nach unten, die Position bleibt unverändert.
+function probeGround(bvh, b) {
+  mvSave.copy(b.pos);
+  moveBody(bvh, b, mvDelta.set(0, -STICK, 0), moveProbe);
+  b.pos.copy(mvSave);
+  return moveProbe.gy > GROUND_NY;
+}
+
+// Ein Physikschritt für Spieler oder Gegner. hd = gewünschte Horizontalverschiebung dieses Schritts.
+// Setzt b.onGround und passt b.vel an. Keine Schwerkraft am Boden: kein Kriechen auf Schrägen.
+function stepBody(bvh, b, hd, h, term) {
+  const wasGround = b.onGround;
+  let ground = false;
+  const vel = b.vel;
+
+  // 1. horizontal, bei Hindernis mit Stufen-Versuch
+  const hdl = Math.hypot(hd.x, hd.z);
+  moveMain.hit = false;
+  if (hdl > 0) {
+    mvStart.copy(b.pos);
+    moveBody(bvh, b, hd, moveMain);
+    if (moveMain.gy > GROUND_NY) ground = true;
+    if (wasGround && b.canStep) {
+      // Fortschritt in Bewegungsrichtung (mit Vorzeichen: Zurückgeschobenwerden zählt negativ)
+      const along = () => ((b.pos.x - mvStart.x) * hd.x + (b.pos.z - mvStart.z) * hd.z) / hdl;
+      const got = along();
+      if (got < hdl * 0.7) {
+        mvFirst.copy(b.pos);
+        b.pos.copy(mvStart);
+        moveBody(bvh, b, mvDelta.set(0, STEP_UP, 0), moveAux);
+        const lifted = b.pos.y - mvStart.y;
+        let ok = false;
+        if (lifted > 1e-4) {
+          moveBody(bvh, b, hd, moveAux);
+          moveBody(bvh, b, mvDelta.set(0, -lifted, 0), moveAux);
+          ok = along() > got + hdl * 0.2 && b.pos.y - mvStart.y <= STEP_UP + 1e-6 && probeGround(bvh, b);
+        }
+        if (ok) ground = true; else b.pos.copy(mvFirst);
+      }
+    }
+  }
+
+  // 2. vertikal
+  if (vel.y > 0) ground = false;
+  // Rollt der Körper gerade an einer Kante (Buchrand, Teppich) nach oben, gilt er als gestützt: ohne das zieht ihn die Schwerkraft zurück.
+  // Nur bis STEP_UP über dem letzten echten Boden, steilere Flächen rutschen weiterhin.
+  const climbing = !ground && wasGround && vel.y <= 0 && moveMain.hit && moveMain.pushed.y > 0 && moveMain.gy > 0.2 && b.pos.y - b.supportY <= STEP_UP * 1.2;
+  if (climbing) { ground = true; vel.y = 0; }
+  if (wasGround && vel.y <= 0 && !climbing) {
+    if (!ground) {
+      // Bodentest: kurz nach unten tasten, Position bleibt unverändert (so kriecht man auf Schrägen nicht)
+      ground = probeGround(bvh, b);
+      if (!ground && !moveMain.hit) {
+        // bergab oder kleine Kante (nicht, wenn man gerade an einem Hindernis hochrollt): bis SNAP_DOWN nachziehen
+        moveBody(bvh, b, mvDelta.set(0, -SNAP_DOWN, 0), moveAux);
+        ground = moveAux.gy > GROUND_NY;
+        if (!ground) b.pos.copy(mvSave);
+      }
+    }
+    vel.y = 0;
+  }
+  if (!ground) {
+    vel.y -= P.gravity * h;
+    if (vel.y < 0) vel.y += P.gravity * h * Math.min(1, (vel.y / term) ** 2);   // Luftwiderstand
+    if (vel.y < -term * 1.05) vel.y += (-term - vel.y) * Math.min(1, 10 * h);
+    if (vel.y < -term * 1.5) vel.y = -term * 1.5;
+    moveBody(bvh, b, mvDelta.set(0, vel.y * h, 0), moveAux);
+    if (moveAux.hit) {
+      if (moveAux.gy > GROUND_NY && vel.y <= 0) { ground = true; vel.y = 0; }
+      else { const l = moveAux.pushed.length(); if (l > 0) { mvC.copy(moveAux.pushed).divideScalar(l); const vn = vel.dot(mvC); if (vn < 0) vel.addScaledVector(mvC, -vn); } }
+    }
+  }
+  // horizontale Stoßgeschwindigkeit (Rückstoß) klingt ab
+  const fr = Math.exp(-2.4 * h);
+  vel.x *= fr; vel.z *= fr;
+  if (ground && !climbing) b.supportY = b.pos.y;
+  b.onGround = ground;
+  return ground;
+}
+
+// ---------------- Spielzustand ----------------
+const state = {
+  mode: 'menu',        // menu | calib | play | paused | dead
+  world: null,         // { root, collider, bounds, spawn, spawnYaw, name }
+  pos: new THREE.Vector3(),
+  vel: new THREE.Vector3(),
+  yaw: 0, pitch: 0,
+  onGround: false,
+  hp: 100,
+  ammo: 16, mag: 16, reloading: 0,
+  fireCd: 0,
+  score: 0,
+  wave: 0, waveTimer: 0,
+  hurtFlash: 0,
+  bob: 0,
+  gliding: false,
+  moving: false, sprinting: false,
+  jumpQueued: false, jumpBuf: 0,   // Sprung-Tastendruck (Flanke), verfällt nach 0,12 s
+  fallSpeed: 0,
+};
+// Körper des Spielers für die Kollision: Kapsel vom Fuß (pos) aufwärts
+const playerBody = { pos: state.pos, vel: state.vel, onGround: false, r: P.radius, y0: P.radius, y1: P.height - P.radius, canStep: true, supportY: 0 };
+Object.defineProperty(playerBody, 'onGround', { get: () => state.onGround, set: v => { state.onGround = v; } });
+const enemies = [];
+const crumbs = [];
+const effects = [];
+const keys = new Set();   // gehaltene Tasten (Leertaste bleibt gedrückt, solange man sie hält)
+let mouseDown = false;
+let dragMode = false;     // true: Pointer-Lock klappt nicht, Umsehen per Ziehen
+
+// ---------------- Waffe (Viewmodel) ----------------
+const gun = new THREE.Group();
+{
+  const orange = new THREE.MeshStandardMaterial({ color: 0xf5b82e, roughness: 0.45 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2b2622, roughness: 0.5, metalness: 0.3 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.0022, 0.0026, 0.008), dark);
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.0008, 0.0004, 0.006), orange);   // orange Akzente
+  rail.position.set(0, 0.0015, -0.0003);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(0.0024, 0.0028, 0.0008), orange);
+  band.position.set(0, 0, -0.0025);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.0005, 0.0006, 0.005, 10), dark);
+  barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.0005, -0.006);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.0016, 0.004, 0.002), dark);
+  grip.position.set(0, -0.0024, 0.0022); grip.rotation.x = -0.3;
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.0004, 8, 6), new THREE.MeshBasicMaterial({ color: 0xf5b82e }));
+  tip.position.set(0, 0.0005, -0.0085);
+  gun.add(body, rail, band, barrel, grip, tip);
+  gun.scale.setScalar(0.6);   // klein am Bildrand (etwa 8 % des Bildes)
+  gun.position.set(0.0042, -0.0037, -0.0095);
+  gun.rotation.y = 0.06;
+  gun.traverse(o => { if (o.material) o.material.depthTest = true; });
+  playCam.add(gun);
+  const fill = new THREE.PointLight(0xffffff, 0.00002, 0, 2);
+  fill.position.set(0.002, 0.002, -0.004);
+  playCam.add(fill);
+}
+const GUN_Z = -0.0095;
+const muzzleWorld = () => gun.localToWorld(new THREE.Vector3(0, 0.0005, -0.0085));
+
+// ---------------- Gegner ----------------
+const fuzzGeo = (() => {
+  const g = new THREE.IcosahedronGeometry(1, 3);
+  const p = g.attributes.position;
+  const r = seeded(9);
+  for (let i = 0; i < p.count; i++) { const s = 0.85 + r() * 0.3; p.setXYZ(i, p.getX(i) * s, p.getY(i) * s, p.getZ(i) * s); }
+  g.computeVertexNormals();
+  return g;
+})();
+const hairGeo = (() => {
+  const pts = []; const r = seeded(13);
+  for (let i = 0; i < 160; i++) {
+    const d = new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize();
+    pts.push(d.clone().multiplyScalar(0.8), d.clone().multiplyScalar(1.25 + r() * 0.35).add(new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).multiplyScalar(0.3)));
+  }
+  return new THREE.BufferGeometry().setFromPoints(pts);
+})();
+// Geometrien und die schwarzen Pupillen sind für alle Gegner gemeinsam; Materialien mit Treffer-Blitz hat jeder Gegner selbst.
+const eyeGeo = new THREE.SphereGeometry(0.28, 12, 8);
+const pupilGeo = new THREE.SphereGeometry(0.13, 8, 6);
+const eyeBlack = new THREE.MeshBasicMaterial({ color: 0x111111 });
+const mitesBodyGeo = new THREE.SphereGeometry(1, 16, 12);
+const miteLegsGeo = (() => {
+  const pts = [];
+  for (let s = -1; s <= 1; s += 2) for (let i = 0; i < 4; i++) {
+    const z = -0.6 + i * 0.4;
+    pts.push(new THREE.Vector3(s * 0.6, 0, z), new THREE.Vector3(s * 1.3, 0.3, z * 1.2), new THREE.Vector3(s * 1.3, 0.3, z * 1.2), new THREE.Vector3(s * 1.7, -0.9, z * 1.4));
+  }
+  return new THREE.BufferGeometry().setFromPoints(pts);
+})();
+const eyeWhiteProto = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+const legMat = new THREE.LineBasicMaterial({ color: 0x3a1512 });
+const hairMat = new THREE.LineBasicMaterial({ color: 0xb6aebf });
+
+function makeEnemyMesh(kind) {
+  const g = new THREE.Group();
+  g.userData.ownMaterials = [];
+  const own = m => (g.userData.ownMaterials.push(m), m);
+  if (kind === 'fussel') {
+    const body = new THREE.Mesh(fuzzGeo, own(new THREE.MeshStandardMaterial({ color: 0xffffff, map: fuzzTex, roughness: 1, flatShading: true })));
+    g.add(body, new THREE.LineSegments(hairGeo, hairMat));
+  } else {
+    const body = new THREE.Mesh(mitesBodyGeo, own(new THREE.MeshStandardMaterial({ color: 0xc0473d, roughness: 0.4 })));
+    body.scale.set(0.9, 0.7, 1.2);
+    g.add(body, new THREE.LineSegments(miteLegsGeo, legMat));
+  }
+  const eyeMat = own(eyeWhiteProto.clone());   // eigenes Material, damit nur dieser Gegner blitzt
+  for (const s of [-1, 1]) {
+    const e = new THREE.Mesh(eyeGeo, eyeMat);
+    e.position.set(s * 0.33, 0.35, -0.82);
+    const pu = new THREE.Mesh(pupilGeo, eyeBlack);
+    pu.position.set(0, 0, -0.2); e.add(pu);
+    g.add(e);
+  }
+  g.userData.flashMats = g.userData.ownMaterials;
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+const ENEMY_R = { fussel: 0.0085, milbe: 0.0045 };
+function spawnEnemy(kind, at) {
+  const cfg = kind === 'fussel'
+    ? { r: ENEMY_R.fussel, hp: 3, speed: 0.045, dmg: 18, points: 100 }
+    : { r: ENEMY_R.milbe, hp: 1, speed: 0.1, dmg: 9, points: 60 };
+  const mesh = makeEnemyMesh(kind);
+  mesh.scale.setScalar(cfg.r);
+  scene.add(mesh);
+  const e = {
+    kind, ...cfg, maxHp: cfg.hp, mesh, pos: at.clone().add(new THREE.Vector3(0, cfg.r + 0.002, 0)), vel: new THREE.Vector3(),
+    onGround: false, y0: 0, y1: 0, canStep: false, supportY: at.y,
+    dir: new THREE.Vector3(), sp: 0, hitCd: 0, wander: Math.random() * 6.28, stuck: 0, lastPos: at.clone(),
+    anchor: at.clone(), anchorT: 0, flash: 0, spawnT: 0,
+  };
+  e.mesh.position.copy(e.pos);
+  enemies.push(e);
+  return e;
+}
+
+function removeEnemy(e) {
+  scene.remove(e.mesh);
+  for (const m of e.mesh.userData.ownMaterials) m.dispose();   // Geometrien, Textur und Pupillen-Material sind geteilt
+  const i = enemies.indexOf(e);
+  if (i >= 0) enemies.splice(i, 1);
+}
+
+// zufälliger begehbarer Punkt in der Nähe
+const ray = new THREE.Ray();
+const fwA = new THREE.Vector3(), fwB = new THREE.Vector3(), fwC = new THREE.Vector3();
+const fwUp = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
+// Steht eine Kapsel in Spielergröße auf dem Punkt p frei, ohne dass sie aus einem Festkörper geschoben werden muss?
+function hasClearance(bvh, p, radius = P.radius) {
+  fwA.copy(p); fwA.y += radius + 0.0008;
+  fwB.copy(p); fwB.y += P.height - radius + 0.0008;
+  resolveCapsule(bvh, fwA, fwB, radius, fwC);
+  return fwC.length() < 0.0006;
+}
+// Liegt der Punkt (Fußpunkt + 4 mm) im Inneren eines geschlossenen Körpers? Trifft ein Strahl zuerst eine Rückseite, ja.
+const INSIDE_DIRS = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]].map(d => new THREE.Vector3(...d));
+function insideSolid(bvh, p) {
+  fwUp.origin.copy(p); fwUp.origin.y += 0.004;
+  for (const d of INSIDE_DIRS) {
+    fwUp.direction.copy(d);
+    const hit = bvh.raycastFirst(fwUp, THREE.DoubleSide);
+    if (hit && hit.face.normal.dot(d) > 0) { fwUp.direction.set(0, 1, 0); return true; }
+  }
+  fwUp.direction.set(0, 1, 0);
+  return false;
+}
+// zufälliger begehbarer Punkt in der Nähe. Nur Flächen, die nach oben zeigen, im begehbaren Innenbereich, mit Platz darüber.
+// Beim Demo-Zimmer (geschlossene Körper) genügt normal.y > 0,65; bei Scans (Windungsrichtung unsicher) zählt der Betrag, dafür entscheidet die Platzprüfung.
+function findWalkable(center, minR, maxR, yRange = [-0.8, 0.4], radius = P.radius) {
+  const w = state.world;
+  const bvh = w.collider.geometry.boundsTree;
+  const b = w.inner || w.bounds;
+  const closed = w.kind === 'demo';
+  for (let t = 0; t < 60; t++) {
+    const a = Math.random() * Math.PI * 2, d = rand(minR, maxR);
+    const x = center.x + Math.cos(a) * d, z = center.z + Math.sin(a) * d;
+    if (x < b.min.x || x > b.max.x || z < b.min.z || z > b.max.z) continue;
+    ray.origin.set(x, center.y + yRange[1] + 0.05, z);
+    ray.direction.set(0, -1, 0);
+    const hits = bvh.raycast(ray, THREE.DoubleSide).sort((p, q) => p.distance - q.distance);
+    for (const h of hits) {
+      if (h.point.y < center.y + yRange[0]) break;
+      const ny = closed ? h.face.normal.y : Math.abs(h.face.normal.y);
+      if (ny <= 0.65) continue;
+      if (!hasClearance(bvh, h.point, radius)) continue;
+      // Luft darüber? Trifft der Strahl nach oben zuerst eine Rückseite, liegt der Punkt im Inneren eines Körpers (z. B. unter einem Buch).
+      fwUp.origin.copy(h.point); fwUp.origin.y += 0.001;
+      const above = bvh.raycastFirst(fwUp, THREE.DoubleSide);
+      if (above && above.distance < 0.03) continue;
+      if (closed && insideSolid(bvh, h.point)) continue;
+      return h.point.clone();
+    }
+  }
+  return null;
+}
+
+// ---------------- Krümel (Heilung) ----------------
+const crumbGeo = new THREE.DodecahedronGeometry(0.003, 0);
+const crumbMat = new THREE.MeshStandardMaterial({ color: 0xd9a35a, roughness: 0.9, flatShading: true });
+function spawnCrumb(at) {
+  const m = new THREE.Mesh(crumbGeo, crumbMat);
+  m.position.copy(at).add(new THREE.Vector3(0, 0.004, 0));
+  m.scale.set(1, 0.7, 1.2);
+  m.castShadow = true;
+  scene.add(m);
+  crumbs.push({ mesh: m, t: Math.random() * 6 });
+}
+
+// ---------------- Effekte ----------------
+function addTracer(from, to) {
+  const g = new THREE.BufferGeometry().setFromPoints([from, to]);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.9 }));
+  scene.add(l);
+  effects.push({ obj: l, life: 0.06, max: 0.06, kind: 'fade' });
+}
+function addPuff(at, color, n = 14, size = 0.0012, speed = 0.06) {
+  const geo = new THREE.BufferGeometry();
+  const p = new Float32Array(n * 3), v = [];
+  for (let i = 0; i < n; i++) {
+    p.set([at.x, at.y, at.z], i * 3);
+    v.push(new THREE.Vector3(rand(-1, 1), rand(-0.2, 1.2), rand(-1, 1)).normalize().multiplyScalar(speed * rand(0.4, 1)));
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color, size, transparent: true, opacity: 1 }));
+  scene.add(pts);
+  effects.push({ obj: pts, life: 0.6, max: 0.6, kind: 'puff', v });
+}
+
+// ---------------- Ton ----------------
+let actx = null;
+function audio() { if (!actx) { try { actx = new AudioContext(); } catch { actx = null; } } return actx; }
+function blip(type, f0, f1, dur, vol = 0.12, noise = false) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime;
+  const g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); g.connect(a.destination);
+  if (noise) {
+    const buf = a.createBuffer(1, a.sampleRate * dur, a.sampleRate); const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const s = a.createBufferSource(); s.buffer = buf;
+    const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = f0;
+    s.connect(f); f.connect(g); s.start(t);
+  } else {
+    const o = a.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    o.connect(g); o.start(t); o.stop(t + dur);
+  }
+}
+const sfx = {
+  shoot: () => { blip('square', 1400, 380, 0.08, 0.06); blip('', 3000, 0, 0.05, 0.05, true); },
+  hit: () => blip('', 900, 0, 0.12, 0.12, true),
+  pop: () => { blip('sine', 300, 1200, 0.15, 0.12); blip('', 1500, 0, 0.2, 0.08, true); },
+  hurt: () => blip('sawtooth', 160, 60, 0.25, 0.12),
+  pick: () => { blip('triangle', 660, 990, 0.12, 0.1); setTimeout(() => blip('triangle', 990, 1320, 0.12, 0.1), 90); },
+  reload: () => blip('square', 220, 330, 0.1, 0.05),
+  empty: () => blip('square', 120, 100, 0.05, 0.05),
+};
+
+// ---------------- HUD ----------------
+let toastTimer = 0;
+// Titel und Untertitel als reiner Text (Dateinamen können Sonderzeichen enthalten)
+function toast(title, sub = '', secs = 2.5) {
+  const el = $('toast');
+  el.textContent = title;
+  if (sub) { const s = document.createElement('small'); s.textContent = sub; el.appendChild(s); }
+  el.classList.add('show'); toastTimer = secs;
+}
+function updateHud() {
+  $('hp-fill').style.width = Math.max(0, state.hp) + '%';
+  $('ammo').textContent = state.reloading > 0 ? 'Lädt …' : `${state.ammo} / ${state.mag}`;
+  $('score').textContent = state.score.toLocaleString('de-DE');
+  const left = enemies.length;
+  $('wave-line').textContent = state.waveTimer > 0 ? `Welle ${state.wave + 1} kommt …` : `Welle ${state.wave} · ${left} ${left === 1 ? 'Gegner' : 'Gegner'} übrig`;
+  const floorY = state.world ? state.world.floorY : 0;
+  const hcm = Math.max(0, (state.pos.y - floorY) * 100);
+  const human = (state.pos.y - floorY) * HUMAN_FACTOR;
+  $('scale-line').textContent = `Höhe über dem Boden: ${fmt(hcm)} cm · für einen Menschen wären das ${fmt(Math.max(0, human), 0)} m`;
+  $('vignette').style.boxShadow = `inset 0 0 120px 40px rgba(232,106,106,${Math.min(0.75, state.hurtFlash)})`;
+}
+
+// ---------------- Welten laden ----------------
+function clearWorld() {
+  for (const e of [...enemies]) removeEnemy(e);
+  for (const c of crumbs) scene.remove(c.mesh);
+  crumbs.length = 0;
+  for (const f of effects) { scene.remove(f.obj); f.obj.geometry.dispose(); f.obj.material.dispose(); }
+  effects.length = 0;
+  if (state.world) {
+    scene.remove(state.world.root);
+    if (state.world.kind === 'scan') disposeWorld(state.world);   // das Demo-Zimmer bleibt im Cache
+  }
+}
+
+// Gibt Geometrien, Materialien, Texturen und die Kollisions-BVH eines Scans frei
+function disposeObject(obj) {
+  const mats = new Set();
+  obj.traverse(c => {
+    if (!c.isMesh && !c.isLine && !c.isPoints) return;
+    if (c.geometry) { c.geometry.disposeBoundsTree?.(); c.geometry.dispose(); }
+    for (const m of [c.material, c.userData.origMaterial].flat()) if (m) mats.add(m);
+  });
+  for (const m of mats) {
+    for (const v of Object.values(m)) if (v && v.isTexture) v.dispose();
+    m.dispose();
+  }
+}
+function disposeWorld(w) {
+  disposeObject(w.root);
+  if (w.collider) { w.collider.geometry.disposeBoundsTree?.(); w.collider.geometry.dispose(); w.collider = null; }
+}
+
+function setWorld(w) {
+  clearWorld();
+  state.world = w;
+  scene.add(w.root);
+  if (!w.collider) {   // Demo-Zimmer: Kollisions-BVH nur einmal bauen
+    w.collider = buildCollider(w.collidable || w.root);
+    w.bounds = w.collider.geometry.boundingBox.clone();
+  }
+  if (!w.inner) {   // begehbarer Bereich: Rand etwas nach innen
+    const m = Math.min(0.1, 0.02 * Math.max(w.bounds.max.x - w.bounds.min.x, w.bounds.max.z - w.bounds.min.z));
+    w.inner = w.bounds.clone();
+    w.inner.min.x += m; w.inner.max.x -= m; w.inner.min.z += m; w.inner.max.z -= m;
+  }
+  if (w.floorY === undefined) w.floorY = 0;
+}
+
+let demoWorld = null;
+function getDemoWorld() {
+  if (!demoWorld) {
+    const d = buildDemoRoom();
+    demoWorld = { root: d.root, collidable: d.solid, inner: d.inner, spawn: d.spawn, spawnYaw: d.spawnYaw, name: d.name, kind: 'demo', floorY: 0 };
+  }
+  return demoWorld;
+}
+
+// ---------------- Spielstart ----------------
+function startGame() {
+  clearWorldDynamic();
+  const w = state.world;
+  state.pos.copy(w.spawn);
+  state.pos.y += 0.003;
+  state.vel.set(0, 0, 0);
+  state.yaw = w.spawnYaw || 0; state.pitch = -0.05;
+  state.hp = 100; state.ammo = state.mag; state.reloading = 0; state.score = 0;
+  state.wave = 0; state.waveTimer = 2.5;
+  state.onGround = false; state.jumpQueued = false; state.jumpBuf = 0; physAcc = 0;
+  activeCam = playCam;
+  orbit.enabled = false;
+  setMode('play');
+  toast(w.name, 'Du bist 2 cm groß. Die Fusselbiester kommen. Krümel heilen dich.', 3.5);
+}
+function clearWorldDynamic() {
+  for (const e of [...enemies]) removeEnemy(e);
+  for (const c of crumbs) scene.remove(c.mesh);
+  crumbs.length = 0;
+}
+
+// Spawnpunkt, an dem auch die Kugel des Gegners (Radius r) frei steht; sonst null
+const spawnQ = new THREE.Vector3(), spawnC = new THREE.Vector3();
+function sphereFree(bvh, p, r) {
+  spawnQ.copy(p); spawnQ.y += r + 0.002;
+  resolveCapsule(bvh, spawnQ, spawnQ, r, spawnC);
+  return spawnC.length() <= 0.0005;
+}
+function findEnemySpot(minR, maxR, r) {
+  const bvh = state.world.collider.geometry.boundsTree;
+  for (let t = 0; t < 6; t++) {
+    const p = findWalkable(state.pos, minR, maxR);
+    if (p && sphereFree(bvh, p, r)) return p;
+  }
+  return null;
+}
+function nextWave() {
+  state.wave++;
+  const n = 2 + state.wave * 2;
+  const mites = Math.max(0, state.wave - 1) * 2;
+  let placed = 0;
+  for (let i = 0; i < n + mites; i++) {
+    const kind = i < n ? 'fussel' : 'milbe';
+    const p = findEnemySpot(0.35, 1.1 + state.wave * 0.1, ENEMY_R[kind]);
+    if (!p) continue;
+    const e = spawnEnemy(kind, p);
+    e.spawnT = 0.6;
+    placed++;
+  }
+  for (let i = 0; i < 3; i++) { const p = findWalkable(state.pos, 0.1, 0.8); if (p) spawnCrumb(p); }
+  if (!placed) { // in sehr engen Scans: direkt neben dem Spieler, aber nur auf geprüftem Boden
+    let p = findEnemySpot(0.02, 0.3, ENEMY_R.fussel);
+    if (!p) {
+      const bvh = state.world.collider.geometry.boundsTree;
+      ray.origin.set(state.pos.x + 0.2, state.pos.y + 0.05, state.pos.z);
+      ray.direction.set(0, -1, 0);
+      const h = bvh.raycastFirst(ray, THREE.DoubleSide);
+      if (h && h.face.normal.y > 0.65 && Math.abs(h.point.y - state.pos.y) < 0.1 && sphereFree(bvh, h.point, ENEMY_R.fussel)) p = h.point.clone();
+    }
+    if (p) { spawnEnemy('fussel', p); placed++; }
+  }
+  toast(`Welle ${state.wave}`, `${placed} Gegner krabbeln aus den Ecken`, 2.2);
+}
+
+function setMode(m) {
+  state.mode = m;
+  $('menu').hidden = m !== 'menu';
+  $('calib').hidden = m !== 'calib';
+  $('pause').hidden = !(m === 'paused' || m === 'dead');
+  $('hud').hidden = !(m === 'play' || m === 'paused' || m === 'dead');
+  $('touch').hidden = !(isTouch && m === 'play');
+  if (m !== 'play' && document.pointerLockElement) document.exitPointerLock();
+}
+
+// ---------------- Steuerung ----------------
+const canvas = renderer.domElement;
+
+// Pointer-Lock: klappt es nicht (Iframe, Browser-Regeln), gilt bis zum nächsten erfolgreichen Versuch der Zieh-Modus.
+let lockTimer = 0, hadLock = false;
+function lockPointer() {
+  if (isTouch || document.pointerLockElement === canvas) return;
+  clearTimeout(lockTimer);
+  try {
+    const p = canvas.requestPointerLock?.();
+    if (p && p.catch) p.catch(() => { dragMode = true; });
+  } catch { dragMode = true; }
+  // kommt innerhalb von 0,5 s keine Rückmeldung, wird dieser Klick wie im Zieh-Modus behandelt
+  lockTimer = setTimeout(() => { if (document.pointerLockElement !== canvas) dragMode = true; }, 500);
+}
+document.addEventListener('pointerlockerror', () => { clearTimeout(lockTimer); dragMode = true; });
+document.addEventListener('pointerlockchange', () => {
+  clearTimeout(lockTimer);
+  if (document.pointerLockElement === canvas) { dragMode = false; hadLock = true; drag = null; return; }
+  if (hadLock && state.mode === 'play') pause();
+  hadLock = false;
+});
+
+function pause() {
+  if (state.mode !== 'play') return;
+  resetTouchInput();
+  setMode('paused');
+  $('pause-title').textContent = 'Pause';
+  $('pause-text').textContent = 'Die Fusselbiester warten auf dich.';
+  $('btn-resume').hidden = false;
+}
+function resume() {
+  setMode('play');
+  lockPointer();
+}
+
+// Springen: Leertaste bleibt in keys gedrückt (für Gleiten), der Tastendruck selbst wird separat als Flanke gemerkt
+function queueJump() { state.jumpQueued = true; state.jumpBuf = 0.12; }
+addEventListener('keydown', e => {
+  keys.add(e.code);
+  if (state.mode === 'play') {
+    if (e.code === 'KeyR') reload();
+    if (e.code === 'Escape' || e.code === 'KeyP') pause();
+    if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) queueJump(); }
+  } else if (state.mode === 'paused' && (e.code === 'KeyP')) resume();
+});
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => { keys.clear(); mouseDown = false; resetTouchInput(); });
+
+// Maus: mit Pointer-Lock frei umsehen; sonst ziehen zum Umsehen, Klick schießt
+let drag = null;
+canvas.addEventListener('mousedown', e => {
+  if (state.mode !== 'play' || isTouch) return;
+  audio();
+  if (document.pointerLockElement === canvas) {
+    if (e.button === 0) { mouseDown = true; tryFire(); }
+    return;
+  }
+  // noch kein Lock: Lock anfordern; bis er da ist (oder ausbleibt) zählt der Klick wie im Zieh-Modus
+  lockPointer();
+  if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() };
+});
+addEventListener('mouseup', e => {
+  if (e.button === 0) mouseDown = false;
+  if (drag && state.mode === 'play') {
+    if (drag.moved < 6) tryFire();
+    drag = null;
+  }
+});
+addEventListener('mousemove', e => {
+  if (state.mode !== 'play') return;
+  if (document.pointerLockElement === canvas) look(e.movementX, e.movementY);
+  else if (drag) { look(e.movementX, e.movementY); drag.moved += Math.abs(e.movementX) + Math.abs(e.movementY); }
+});
+function look(dx, dy, sens = 0.0022) {
+  state.yaw -= dx * sens;
+  state.pitch = THREE.MathUtils.clamp(state.pitch - dy * sens, -1.5, 1.5);
+}
+
+// Touch: links Stick, rechts Umsehen
+const touchState = { stickId: null, stickOrigin: null, move: new THREE.Vector2(), lookId: null, lookLast: null, firing: false };
+const stick = $('t-stick'), knob = $('t-knob');
+canvas.addEventListener('touchstart', e => {
+  if (state.mode !== 'play') return;
+  audio();
+  for (const t of e.changedTouches) {
+    if (t.clientX < innerWidth * 0.45 && touchState.stickId === null) {
+      touchState.stickId = t.identifier; touchState.stickOrigin = { x: t.clientX, y: t.clientY };
+      stick.style.display = 'block'; stick.style.left = (t.clientX - 55) + 'px'; stick.style.top = (t.clientY - 55) + 'px';
+    } else if (touchState.lookId === null) {
+      touchState.lookId = t.identifier; touchState.lookLast = { x: t.clientX, y: t.clientY };
+    }
+  }
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchState.stickId) {
+      let dx = t.clientX - touchState.stickOrigin.x, dy = t.clientY - touchState.stickOrigin.y;
+      const l = Math.hypot(dx, dy), max = 45;
+      if (l > max) { dx *= max / l; dy *= max / l; }
+      touchState.move.set(dx / max, dy / max);
+      knob.style.left = (32 + dx) + 'px'; knob.style.top = (32 + dy) + 'px';
+    } else if (t.identifier === touchState.lookId) {
+      look((t.clientX - touchState.lookLast.x) * 1.6, (t.clientY - touchState.lookLast.y) * 1.6);
+      touchState.lookLast = { x: t.clientX, y: t.clientY };
+    }
+  }
+  e.preventDefault();
+}, { passive: false });
+const endTouch = e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchState.stickId) { touchState.stickId = null; touchState.move.set(0, 0); stick.style.display = 'none'; knob.style.left = knob.style.top = '32px'; }
+    if (t.identifier === touchState.lookId) touchState.lookId = null;
+  }
+};
+canvas.addEventListener('touchend', endTouch);
+canvas.addEventListener('touchcancel', endTouch);
+function resetTouchInput() {
+  touchState.firing = false; touchState.move.set(0, 0);
+  touchState.stickId = touchState.lookId = null;
+  keys.delete('Space');
+  stick.style.display = 'none'; knob.style.left = knob.style.top = '32px';
+}
+const holdBtn = (id, on, off) => {
+  const el = $(id);
+  el.addEventListener('touchstart', e => { e.preventDefault(); audio(); on(); }, { passive: false });
+  el.addEventListener('touchend', e => { e.preventDefault(); off?.(); }, { passive: false });
+  el.addEventListener('touchcancel', e => { off?.(); });
+  el.addEventListener('click', () => { on(); off?.(); });
+};
+holdBtn('t-fire', () => { touchState.firing = true; }, () => { touchState.firing = false; });
+holdBtn('t-jump', () => { keys.add('Space'); queueJump(); }, () => keys.delete('Space'));
+holdBtn('t-reload', () => reload());
+holdBtn('t-pause', () => pause());
+
+// ---------------- Schießen ----------------
+function reload() {
+  if (state.reloading > 0 || state.ammo === state.mag) return;
+  state.reloading = 1.1; sfx.reload();
+}
+const raycaster = new THREE.Raycaster();
+function tryFire() {
+  if (state.mode !== 'play' || state.fireCd > 0 || state.reloading > 0) return;
+  if (state.ammo <= 0) { sfx.empty(); reload(); state.fireCd = 0.25; return; }
+  state.ammo--; state.fireCd = 0.15;
+  sfx.shoot();
+  gun.position.z = GUN_Z + 0.0018; // Rückstoß
+  const origin = new THREE.Vector3(); playCam.getWorldPosition(origin);
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(playCam.quaternion);
+  dir.x += rand(-0.004, 0.004); dir.y += rand(-0.004, 0.004); dir.normalize();
+  ray.origin.copy(origin); ray.direction.copy(dir);
+  let best = Infinity, target = null;
+  const wh = state.world.collider.geometry.boundsTree.raycastFirst(ray, THREE.DoubleSide);
+  if (wh) best = wh.distance;
+  const tmp = new THREE.Vector3();
+  for (const e of enemies) {
+    const sph = new THREE.Sphere(e.pos, e.r * 1.15);
+    if (ray.intersectSphere(sph, tmp)) { const d = tmp.distanceTo(origin); if (d < best) { best = d; target = e; } }
+  }
+  const end = origin.clone().addScaledVector(dir, Math.min(best, 8));
+  addTracer(muzzleWorld(), end);
+  if (target) {
+    target.hp--; target.flash = 0.12; sfx.hit();
+    target.vel.x += dir.x * 0.15; target.vel.z += dir.z * 0.15; target.vel.y += 0.25; target.onGround = false;
+    $('crosshair').classList.add('hit'); setTimeout(() => $('crosshair').classList.remove('hit'), 90);
+    addPuff(end, target.kind === 'fussel' ? 0xcfc8d6 : 0xe86a6a, 8, 0.0008, 0.04);
+    if (target.hp <= 0) {
+      state.score += target.points * state.wave;
+      addPuff(target.pos, target.kind === 'fussel' ? 0xb6aebf : 0xc0473d, 30, 0.0015, 0.09);
+      sfx.pop();
+      if (Math.random() < 0.3) spawnCrumb(target.pos.clone().add(new THREE.Vector3(0, -target.r, 0)));
+      removeEnemy(target);
+      if (!enemies.length) { state.waveTimer = 3.5; toast(`Welle ${state.wave} geschafft!`, '', 2); }
+    }
+  } else if (wh) {
+    addPuff(end, 0xfff1b0, 6, 0.0006, 0.03);
+  }
+}
+
+// ---------------- Physik-Update ----------------
+const UP = new THREE.Vector3(0, 1, 0);
+const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3(), hdv = new THREE.Vector3();
+let physAcc = 0;
+
+// Ein fester Physikschritt des Spielers (h = PHYS_DT)
+function stepPlayer(h) {
+  const bvh = state.world.collider.geometry.boundsTree;
+  fwd.set(-Math.sin(state.yaw), 0, -Math.cos(state.yaw));
+  right.set(-fwd.z, 0, fwd.x);
+  move.set(0, 0, 0);
+  if (keys.has('KeyW') || keys.has('ArrowUp')) move.add(fwd);
+  if (keys.has('KeyS') || keys.has('ArrowDown')) move.sub(fwd);
+  if (keys.has('KeyD')) move.add(right);
+  if (keys.has('KeyA')) move.sub(right);
+  if (keys.has('ArrowLeft')) state.yaw += 2.2 * h;
+  if (keys.has('ArrowRight')) state.yaw -= 2.2 * h;
+  if (touchState.move.lengthSq() > 0.01) { move.addScaledVector(fwd, -touchState.move.y).addScaledVector(right, touchState.move.x); }
+  const ml = move.length(); if (ml > 1) move.divideScalar(ml);
+  const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight') || (isTouch && touchState.move.length() > 0.95);
+  const speed = sprint ? P.sprint : P.walk;
+  const airControl = state.onGround ? 1 : 0.75;
+  state.moving = ml > 0.1; state.sprinting = sprint;
+
+  // Springen: Flanke aus jumpQueued; Gleiten: in der Luft, fallend, Leertaste gehalten
+  if (state.jumpBuf > 0) { state.jumpBuf -= h; if (state.jumpBuf <= 0) state.jumpQueued = false; }
+  if (state.jumpQueued && state.onGround) {
+    state.vel.y = P.jump; state.onGround = false; state.jumpQueued = false; state.jumpBuf = 0;
+  }
+  state.gliding = !state.onGround && state.vel.y < 0 && keys.has('Space');
+  const term = state.gliding ? P.glideTerminal : P.terminal;
+
+  hdv.set((move.x * speed * airControl + state.vel.x) * h, 0, (move.z * speed * airControl + state.vel.z) * h);
+  const wasGround = state.onGround, vyBefore = state.vel.y;
+  stepBody(bvh, playerBody, hdv, h, term);
+  if (!wasGround && state.onGround && vyBefore < -1.0) blip('sine', 120, 60, 0.08, 0.06);
+  state.fallSpeed = -state.vel.y;
+
+  // aus der Welt gefallen (Loch im Scan)
+  if (state.pos.y < state.world.bounds.min.y - 0.4) {
+    state.pos.copy(state.world.spawn); state.pos.y += 0.01; state.vel.set(0, 0, 0);
+    toast('Durch ein Loch gefallen', 'Zurück zum Startpunkt', 2);
+  }
+}
+
+// Kamera, Kopfwippen, Waffe: einmal pro Bild
+function updateView(dt) {
+  if (state.onGround && state.moving) state.bob += dt * (state.sprinting ? 16 : 11); else state.bob *= 0.9;
+  const bobY = Math.sin(state.bob) * 0.00025;
+  playCam.position.set(state.pos.x, state.pos.y + P.eye + bobY, state.pos.z);
+  playCam.rotation.set(state.pitch, state.yaw, 0, 'YXZ');
+  gun.position.x = 0.0042 + Math.cos(state.bob * 0.5) * 0.00015;
+  gun.position.y = -0.0037 + Math.abs(Math.sin(state.bob * 0.5)) * 0.00012;
+  gun.position.z += (GUN_Z - gun.position.z) * Math.min(1, dt * 18);
+}
+
+// Gegner-Physik: ein fester Schritt
+function stepEnemyPhysics(e, h) {
+  if (e.spawnT > 0) return;
+  const bvh = state.world.collider.geometry.boundsTree;
+  hdv.set((e.dir.x * e.sp + e.vel.x) * h, 0, (e.dir.z * e.sp + e.vel.z) * h);
+  stepBody(bvh, e, hdv, h, P.terminal);
+}
+
+// Alle festen Physikschritte für die vergangene Zeit dt: unabhängig von der Bildrate, höchstens MAX_PHYS_STEPS pro Bild
+function stepPhysics(dt) {
+  physAcc += dt;
+  let n = 0;
+  while (physAcc >= PHYS_DT && n < MAX_PHYS_STEPS) {
+    stepPlayer(PHYS_DT);
+    for (const e of enemies) stepEnemyPhysics(e, PHYS_DT);
+    physAcc -= PHYS_DT; n++;
+  }
+  if (physAcc >= PHYS_DT) physAcc = 0;   // Rest verwerfen, statt in eine Spirale zu geraten
+}
+
+const eTo = new THREE.Vector3(), ePush = new THREE.Vector3();
+// Gegner-Verhalten (einmal pro Bild): Ziel, Sprünge, Trefferblitz, Angriff, Festhänger
+function stepEnemies(dt) {
+  const bvh = state.world.collider.geometry.boundsTree;
+  const playerCenter = state.pos.clone(); playerCenter.y += P.height / 2;
+  for (const e of [...enemies]) {
+    e.hitCd = Math.max(0, e.hitCd - dt);
+    e.flash = Math.max(0, e.flash - dt);
+    if (e.spawnT > 0) {
+      e.spawnT -= dt; e.mesh.scale.setScalar(Math.max(1e-6, e.r * (1 - Math.max(0, e.spawnT) / 0.6)));
+      e.sp = 0; e.dir.set(0, 0, 0); e.lastPos.copy(e.pos); e.anchor.copy(e.pos); e.anchorT = 0;
+      continue;
+    }
+    e.mesh.scale.setScalar(e.r);
+    const to = eTo.copy(playerCenter).sub(e.pos);
+    const dist = to.length();
+    e.dir.set(to.x, 0, to.z);
+    const chasing = dist < 2.5 && Math.abs(to.y) < 0.6;
+    if (chasing) e.dir.normalize();
+    else { e.wander += rand(-1, 1) * dt; e.dir.set(Math.cos(e.wander), 0, Math.sin(e.wander)); }
+    e.sp = e.speed * (chasing ? 1 : 0.4);
+    // Milben hüpfen, Fusseln rollen
+    if (e.onGround && e.kind === 'milbe' && Math.random() < dt * 1.5) { e.vel.y = 0.5; e.onGround = false; }
+    if (e.onGround && e.stuck > 0.6) { e.vel.y = 0.75; e.onGround = false; e.stuck = 0; e.wander += Math.PI * 0.6; }
+    const moved = e.pos.distanceTo(e.lastPos);
+    e.lastPos.copy(e.pos);
+    if (moved < e.sp * dt * 0.3) e.stuck += dt; else e.stuck = Math.max(0, e.stuck - dt);
+
+    if (e.pos.y < state.world.bounds.min.y - 0.4) { removeEnemy(e); continue; }
+    // länger als 10 s kaum bewegt (und nicht im Nahkampf): umsetzen, damit Wellen nicht festhängen
+    if (e.pos.distanceTo(e.anchor) > 0.03 || dist < 0.06) { e.anchor.copy(e.pos); e.anchorT = 0; }
+    else if ((e.anchorT += dt) > 10) {
+      const p = findWalkable(state.pos, 0.3, 1.2);
+      if (p) { e.pos.copy(p); e.pos.y += e.r + 0.002; e.vel.set(0, 0, 0); e.anchor.copy(e.pos); e.anchorT = 0; e.stuck = 0; }
+      else { removeEnemy(e); continue; }
+    }
+    // Darstellung
+    e.mesh.position.copy(e.pos);
+    e.mesh.rotation.y = chasing ? Math.atan2(-to.x, -to.z) : Math.atan2(-e.dir.x, -e.dir.z);
+    if (e.kind === 'fussel') e.mesh.children[0].rotation.x += e.sp * dt / e.r;
+    const f = e.flash > 0;
+    for (const m of e.mesh.userData.flashMats) m.emissive.setRGB(f ? 0.8 : 0, f ? 0.3 : 0, f ? 0.2 : 0);
+    // Angriff: der Rückstoß geht durch die Kollision, man wird nicht in Wände gedrückt
+    if (dist < e.r + P.radius + 0.004 + P.height * 0.3 && e.hitCd <= 0) {
+      e.hitCd = 0.9;
+      state.hp -= e.dmg; state.hurtFlash = 0.8; sfx.hurt();
+      ePush.copy(to).setY(0).normalize().multiplyScalar(0.003);
+      moveBody(bvh, playerBody, ePush, moveAux);
+      if (state.hp <= 0) die();
+    }
+  }
+  if (!enemies.length && state.wave > 0 && state.waveTimer <= 0) state.waveTimer = 3;
+}
+
+function die() {
+  setMode('dead');
+  $('pause-title').textContent = 'Plattgefusselt';
+  $('pause-text').textContent = `Du hast ${state.wave} ${state.wave === 1 ? 'Welle' : 'Wellen'} erreicht und ${state.score.toLocaleString('de-DE')} Punkte geholt.`;
+  $('btn-resume').hidden = true;
+}
+
+function stepCrumbs(dt) {
+  const pc = state.pos.clone(); pc.y += P.height * 0.3;
+  for (const c of [...crumbs]) {
+    c.t += dt; c.mesh.rotation.y += dt * 1.5;
+    c.mesh.position.y += Math.sin(c.t * 3) * 0.000004;
+    if (c.mesh.position.distanceTo(pc) < 0.012) {
+      scene.remove(c.mesh); crumbs.splice(crumbs.indexOf(c), 1);
+      state.hp = Math.min(100, state.hp + 20); sfx.pick();
+      toast('Keksbrösel! +20 Lebenskraft', '', 1.2);
+    }
+  }
+}
+
+function stepEffects(dt) {
+  for (const f of [...effects]) {
+    f.life -= dt;
+    const k = Math.max(0, f.life / f.max);
+    f.obj.material.opacity = k;
+    if (f.kind === 'puff') {
+      const p = f.obj.geometry.attributes.position;
+      for (let i = 0; i < f.v.length; i++) {
+        f.v[i].y -= 0.15 * dt;
+        p.setXYZ(i, p.getX(i) + f.v[i].x * dt, p.getY(i) + f.v[i].y * dt, p.getZ(i) + f.v[i].z * dt);
+      }
+      p.needsUpdate = true;
+    }
+    if (f.life <= 0) { scene.remove(f.obj); f.obj.geometry.dispose(); f.obj.material.dispose(); effects.splice(effects.indexOf(f), 1); }
+  }
+}
+
+// ---------------- Hauptschleife ----------------
+// Ein Spielbild: Waffe, feste Physikschritte, Gegner, Krümel, Wellen, Anzeige
+function simulate(dt) {
+  state.fireCd = Math.max(0, state.fireCd - dt);
+  if (state.reloading > 0) { state.reloading -= dt; if (state.reloading <= 0) { state.reloading = 0; state.ammo = state.mag; } }
+  if (mouseDown || touchState.firing) tryFire();
+  stepPhysics(dt);
+  stepEnemies(dt);
+  stepCrumbs(dt);
+  if (state.waveTimer > 0) { state.waveTimer -= dt; if (state.waveTimer <= 0) nextWave(); }
+  state.hurtFlash = Math.max(0, state.hurtFlash - dt * 1.5);
+  updateView(dt);
+  updateHud();
+}
+const clock = new THREE.Clock();
+let menuT = 0;
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) $('toast').classList.remove('show'); }
+  if (state.mode === 'play') {
+    simulate(dt);
+  } else if (state.mode === 'menu') {
+    menuT += dt * 0.06;
+    // Kamera fliegt in Winzling-Höhe durchs Zimmer
+    const r = 0.55;
+    orbitCam.position.set(0.1 + Math.cos(menuT) * r, 0.05 + Math.sin(menuT * 0.7) * 0.02, 0.4 + Math.sin(menuT) * r);
+    orbitCam.lookAt(0.6, 0.35, -1.2);
+  } else if (state.mode === 'calib') {
+    orbit.update();
+  }
+  stepEffects(dt);
+  renderer.render(scene, activeCam);
+  requestAnimationFrame(frame);
+}
+
+// ---------------- Scan-Import & Kalibrierung ----------------
+const calib = { pivot: null, inner: null, root: null, rotQ: new THREE.Quaternion(), spawnLocal: null, file: '', tris: 0, sizeRaw: new THREE.Vector3(), lights: null, autoUp: false };
+const marker = new THREE.Group();
+{
+  // Originalgröße: 2-cm-Figur mit Ring. Dazu ein Pin, der unabhängig von der Entfernung etwa 7 % der Bildhöhe groß bleibt,
+  // damit man den Startpunkt auch in einem ganzen Raum sieht.
+  const fig = new THREE.Mesh(new THREE.CapsuleGeometry(P.radius, P.height - 2 * P.radius, 4, 12), new THREE.MeshBasicMaterial({ color: 0xf5b82e }));
+  fig.position.y = P.height / 2;
+  const ringGeo = new THREE.RingGeometry(0.03, 0.04, 32); ringGeo.rotateX(-Math.PI / 2);
+  const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xf5b82e, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+  ring.position.y = 0.002;
+  const pinTex = canvasTex(96, 128, (g) => {
+    g.clearRect(0, 0, 96, 128);
+    g.beginPath(); g.moveTo(48, 124); g.bezierCurveTo(10, 70, 6, 52, 6, 44); g.arc(48, 44, 42, Math.PI, 0); g.bezierCurveTo(90, 52, 86, 70, 48, 124); g.closePath();
+    g.fillStyle = '#f5b82e'; g.fill(); g.lineWidth = 6; g.strokeStyle = '#1d1a17'; g.stroke();
+    g.beginPath(); g.arc(48, 44, 15, 0, Math.PI * 2); g.fillStyle = '#1d1a17'; g.fill();
+  });
+  pinTex.wrapS = pinTex.wrapT = THREE.ClampToEdgeWrapping;
+  const pin = new THREE.Sprite(new THREE.SpriteMaterial({ map: pinTex, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true }));
+  pin.center.set(0.5, 0);
+  pin.scale.set(0.05, 0.0667, 1);
+  pin.renderOrder = 999;
+  marker.add(fig, ring, pin);
+}
+let grid = null;
+
+function showError(msg) { const el = $('load-error'); el.textContent = msg; el.hidden = !msg; }
+
+const EXTERNAL_MSG = 'Diese GLTF-Datei verweist auf getrennte Dateien (.bin oder Bilder), die hier nicht mitgeladen werden. Exportiere den Scan bitte als einzelne GLB-Datei.';
+function friendlyError(err) {
+  const msg = String(err?.message || err || '');
+  if (/draco/i.test(msg)) return 'Der Scan ist mit Draco komprimiert. Exportiere ihn bitte ohne Draco-Kompression.';
+  if (/buffer|texture|image|fetch|404|network/i.test(msg) && !/Punktwolke|Mesh/.test(msg)) return EXTERNAL_MSG;
+  return msg.startsWith('Diese') || msg.startsWith('In der') || msg.startsWith('Dieses') || msg.startsWith('Die ')
+    ? msg
+    : `Der Scan ließ sich nicht laden${msg ? ` (${msg.replace(/^THREE\.\w+:\s*/, '')})` : ''}. Versuch es bitte mit einer GLB-Datei.`;
+}
+
+async function loadScanFile(file) {
+  showError('');
+  const ext = file.name.split('.').pop().toLowerCase();
+  $('btn-load').disabled = true; $('btn-load').textContent = 'Lade Scan …';
+  try {
+    const buf = await file.arrayBuffer();
+    let obj;
+    if (ext === 'glb' || ext === 'gltf') {
+      let data = buf;
+      if (ext === 'gltf') {
+        data = new TextDecoder().decode(buf);
+        let json;
+        try { json = JSON.parse(data); } catch { throw new Error('Die GLTF-Datei ist beschädigt oder keine gültige GLTF-Datei. Exportiere den Scan als GLB.'); }
+        if ([...(json.buffers || []), ...(json.images || [])].some(x => x.uri && !x.uri.startsWith('data:'))) throw new Error(EXTERNAL_MSG);
+      }
+      const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+      const gltf = await new Promise((res, rej) => loader.parse(data, '', res, rej));
+      obj = gltf.scene;
+    } else if (ext === 'obj') {
+      obj = new OBJLoader().parse(new TextDecoder().decode(buf));
+    } else if (ext === 'ply') {
+      const geo = new PLYLoader().parse(buf);
+      if (!geo.index) throw new Error('Diese PLY-Datei ist eine Punktwolke ohne Flächen. Exportiere den Scan als Mesh (GLB, OBJ oder PLY mit Flächen).');
+      if (!geo.attributes.normal) geo.computeVertexNormals();
+      obj = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xbbbbbb, vertexColors: !!geo.attributes.color }));
+    } else {
+      throw new Error('Dieses Format kenne ich nicht. Bitte GLB, GLTF, OBJ oder PLY wählen.');
+    }
+    let tris = 0, meshes = 0;
+    obj.traverse(c => {
+      if (!c.isMesh) return;
+      meshes++;
+      const g = c.geometry;
+      tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
+      g.computeBoundsTree();
+      c.userData.origMaterial = c.material;
+    });
+    if (!meshes) throw new Error('In der Datei steckt kein 3D-Mesh. Vielleicht wurde nur eine Punktwolke oder Kamera exportiert.');
+    beginCalibration(obj, file.name, tris);
+  } catch (err) {
+    console.warn('Scan konnte nicht geladen werden:', err);
+    showError(friendlyError(err));
+  } finally {
+    $('btn-load').disabled = false; $('btn-load').textContent = 'Eigenen Raum-Scan laden';
+  }
+}
+
+// Zur Kalibrierung FrontSide (von außen sieht man durch Wände und Decke hinein), im Spiel DoubleSide
+function applyMaterials(obj, unlit, side = THREE.FrontSide) {
+  obj.traverse(c => {
+    if (!c.isMesh) return;
+    const orig = c.userData.origMaterial;
+    if (c.material && c.material !== orig) [c.material].flat().forEach(m => m.dispose());   // selbst erzeugte Materialien, nicht die Originale
+    const src = Array.isArray(orig) ? orig[0] : orig;
+    const hasColor = !!c.geometry.attributes.color;
+    const map = src?.map || null;
+    if (unlit && (map || hasColor)) c.material = new THREE.MeshBasicMaterial({ map, vertexColors: hasColor, side });
+    else c.material = new THREE.MeshStandardMaterial({ map, vertexColors: hasColor, color: map || hasColor ? 0xffffff : (src?.color || 0xbbbbbb), roughness: 0.9, side });
+    c.castShadow = false; c.receiveShadow = false;
+  });
+}
+function setSide(obj, side) {
+  obj.traverse(c => { if (c.isMesh) [c.material].flat().forEach(m => { m.side = side; m.needsUpdate = true; }); });
+}
+
+// Alle Dreiecke in Weltkoordinaten (höchstens ~maxTris, sonst jedes n-te; w = Gewicht je Stichprobe)
+const triA = new THREE.Vector3(), triB = new THREE.Vector3(), triC = new THREE.Vector3();
+function forEachTriangle(object, fn, maxTris = 400000) {
+  object.updateMatrixWorld(true);
+  const meshes = []; let total = 0;
+  object.traverse(c => {
+    if (!c.isMesh || !c.geometry.attributes.position) return;
+    meshes.push(c); const g = c.geometry; total += (g.index ? g.index.count : g.attributes.position.count) / 3;
+  });
+  const stride = Math.max(1, Math.ceil(total / maxTris));
+  for (const m of meshes) {
+    const g = m.geometry, pa = g.attributes.position, ia = g.index;
+    const n = (ia ? ia.count : pa.count) / 3;
+    for (let t = 0; t < n; t += stride) {
+      const i0 = ia ? ia.getX(t * 3) : t * 3, i1 = ia ? ia.getX(t * 3 + 1) : t * 3 + 1, i2 = ia ? ia.getX(t * 3 + 2) : t * 3 + 2;
+      triA.fromBufferAttribute(pa, i0).applyMatrix4(m.matrixWorld);
+      triB.fromBufferAttribute(pa, i1).applyMatrix4(m.matrixWorld);
+      triC.fromBufferAttribute(pa, i2).applyMatrix4(m.matrixWorld);
+      fn(triA, triB, triC, stride);
+    }
+  }
+}
+const triN = new THREE.Vector3(), triE = new THREE.Vector3();
+function triNormalArea(a, b, c) {   // schreibt die Normale nach triN, gibt die Fläche zurück
+  triN.subVectors(b, a); triE.subVectors(c, a); triN.cross(triE);
+  const area = triN.length() * 0.5;
+  if (area > 0) triN.normalize();
+  return area;
+}
+
+// Oben-Achse erkennen (für OBJ/PLY, die oft Z-oben exportiert werden; GLB ist laut Spezifikation immer Y-oben).
+// Die Richtung mit der meisten nach innen/oben zeigenden Fläche ist meist der Boden. Liegen mehrere Achsen nah beieinander,
+// gewinnt die mit der kleinsten Ausdehnung (ein Raum ist niedriger als breit). Boden und Decke trennt die Lage:
+// der Boden (Normale nach oben) liegt unter der Decke (Normale nach unten).
+function detectUp(object) {
+  const area = new Float64Array(6), coord = new Float64Array(6);
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  forEachTriangle(object, (a, b, c, w) => {
+    const ar = triNormalArea(a, b, c) * w;
+    if (!(ar > 0)) return;
+    const cen = [(a.x + b.x + c.x) / 3, (a.y + b.y + c.y) / 3, (a.z + b.z + c.z) / 3];
+    for (let k = 0; k < 3; k++) {
+      lo[k] = Math.min(lo[k], cen[k]); hi[k] = Math.max(hi[k], cen[k]);
+      const comp = k === 0 ? triN.x : k === 1 ? triN.y : triN.z;
+      if (comp > 0.8) { area[2 * k] += ar; coord[2 * k] += ar * cen[k]; }
+      else if (comp < -0.8) { area[2 * k + 1] += ar; coord[2 * k + 1] += ar * cen[k]; }
+    }
+  });
+  const axisScore = k => Math.max(area[2 * k], area[2 * k + 1]);
+  const maxScore = Math.max(axisScore(0), axisScore(1), axisScore(2));
+  if (!(maxScore > 0)) return null;
+  let axis = -1;
+  for (let k = 0; k < 3; k++) {
+    if (axisScore(k) < 0.7 * maxScore) continue;
+    if (axis < 0 || hi[k] - lo[k] < hi[axis] - lo[axis] - 1e-9 && axisScore(k) >= 0.7 * axisScore(axis)) axis = k;
+  }
+  const pos = area[2 * axis], neg = area[2 * axis + 1];
+  let sign = pos >= neg ? 1 : -1;
+  const extent = hi[axis] - lo[axis];
+  if (Math.min(pos, neg) > 0.5 * Math.max(pos, neg) && extent > 0) {
+    const mPos = coord[2 * axis] / pos, mNeg = coord[2 * axis + 1] / neg;
+    if (Math.abs(mPos - mNeg) > 0.1 * extent) sign = mPos < mNeg ? 1 : -1;   // nach oben zeigende Flächen liegen unten
+  }
+  const up = new THREE.Vector3(); up.setComponent(axis, sign);
+  return up;
+}
+
+// Bodenhöhe: flächengewichtetes Histogramm der nach oben zeigenden Dreiecke, tiefster deutlicher Gipfel.
+// (Zählt man nur Eckpunkte, gewinnen dicht vernetzte Wände und Möbel.)
+function detectFloorY(object, box) {
+  const h = box.max.y - box.min.y;
+  if (!(h > 0)) return box.min.y;
+  const bins = 400, bw = h / bins, hist = new Float64Array(bins);
+  let upArea = 0, totalArea = 0;
+  forEachTriangle(object, (a, b, c, w) => {
+    const ar = triNormalArea(a, b, c) * w;
+    if (!(ar > 0)) return;
+    totalArea += ar;
+    if (triN.y > 0.8) {
+      const y = (a.y + b.y + c.y) / 3;
+      hist[Math.max(0, Math.min(bins - 1, Math.floor((y - box.min.y) / bw)))] += ar; upArea += ar;
+    }
+  });
+  if (upArea < totalArea * 0.01) return percentileY(object, 0.02);
+  const s = new Float64Array(bins); let max = 0;
+  for (let i = 0; i < bins; i++) { s[i] = hist[i] + (hist[i - 1] || 0) + (hist[i + 1] || 0); max = Math.max(max, s[i]); }
+  for (let i = 0; i < bins; i++) {
+    if (s[i] >= 0.25 * max && s[i] >= (s[i - 1] || 0) && s[i] > (s[i + 1] || 0)) {
+      let sum = 0, wsum = 0;
+      for (let j = Math.max(0, i - 2); j <= Math.min(bins - 1, i + 2); j++) { sum += hist[j]; wsum += hist[j] * (box.min.y + (j + 0.5) * bw); }
+      return sum > 0 ? wsum / sum : box.min.y + (i + 0.5) * bw;
+    }
+  }
+  return percentileY(object, 0.02);
+}
+
+function beginCalibration(obj, name, tris) {
+  clearWorld();
+  state.world = null;
+  const pivot = new THREE.Group(); const inner = new THREE.Group();
+  pivot.add(inner); inner.add(obj);
+  calib.pivot = pivot; calib.inner = inner; calib.file = name; calib.tris = tris;
+  calib.rotQ.identity(); calib.spawnLocal = null; calib.autoUp = false;
+  applyMaterials(obj, $('unlit').checked);
+  const lights = new THREE.Group();
+  lights.add(new THREE.HemisphereLight(0xffffff, 0x666055, 1.6));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(2, 5, 3); lights.add(dl);
+  calib.lights = lights;
+  const root = new THREE.Group(); root.add(pivot, lights);
+  calib.root = root;
+  scene.add(root);
+  inner.updateMatrixWorld(true);
+  // Oben automatisch erkennen (Z-oben-Scans aus manchen Apps)
+  const isGltf = /\.(glb|gltf)$/i.test(name);   // glTF ist laut Spezifikation Y-oben
+  const up = isGltf ? null : detectUp(inner);
+  if (up && up.y < 0.99) { calib.rotQ.setFromUnitVectors(up, new THREE.Vector3(0, 1, 0)); calib.autoUp = true; }
+  // erste Schätzung der Größe: bei GLB sind die Maße oft schon metrisch
+  inner.quaternion.copy(calib.rotQ); inner.updateMatrixWorld(true);
+  const raw = new THREE.Box3().setFromObject(inner);
+  raw.getSize(calib.sizeRaw);
+  const longest = Math.max(calib.sizeRaw.x, calib.sizeRaw.y, calib.sizeRaw.z);
+  $('metric').checked = longest > 1.5 && longest < 15;
+  $('calib-file').textContent = `${name} · ${Math.round(tris).toLocaleString('de-DE')} Dreiecke`;
+  if (calib.autoUp) $('calib-file').textContent += ' · Oben automatisch erkannt';
+  if (tris > 3e6) $('calib-file').textContent += ' · sehr groß, das Spiel kann ruckeln';
+  $('spawn-msg').hidden = true;
+  applyCalibration();
+  activeCam = orbitCam; orbit.enabled = true;
+  setMode('calib');
+  frameCalibCamera();
+}
+
+function percentileY(object, p) {
+  const ys = []; const v = new THREE.Vector3();
+  object.updateMatrixWorld(true);
+  object.traverse(c => {
+    if (!c.isMesh) return;
+    const pa = c.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pa.count / 60000));
+    for (let i = 0; i < pa.count; i += step) { v.fromBufferAttribute(pa, i).applyMatrix4(c.matrixWorld); ys.push(v.y); }
+  });
+  ys.sort((a, b) => a - b);
+  return ys[Math.floor(ys.length * p)] ?? 0;
+}
+
+const clampLen = v => Math.min(30, Math.max(0.5, Number.isFinite(v) ? v : 4));
+function applyCalibration() {
+  const { pivot, inner } = calib;
+  pivot.position.set(0, 0, 0); pivot.scale.setScalar(1);
+  inner.quaternion.copy(calib.rotQ);
+  inner.position.set(0, 0, 0);
+  pivot.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(inner);
+  const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  const floorY = detectFloorY(inner, box);
+  let s = 1;
+  if (!$('metric').checked) {
+    s = clampLen(parseFloat($('room-len').value)) / Math.max(size.x, size.z, 1e-6);
+  }
+  inner.position.set(-center.x, -floorY, -center.z);
+  pivot.scale.setScalar(s);
+  pivot.updateMatrixWorld(true);
+  const realSize = size.clone().multiplyScalar(s);
+  $('calib-dims').textContent = `Raum: ${fmt(realSize.x, 2)} × ${fmt(realSize.z, 2)} m, Höhe ${fmt(realSize.y, 2)} m. Für dich wirkt das wie ${fmt(realSize.x * HUMAN_FACTOR, 0)} × ${fmt(realSize.z * HUMAN_FACTOR, 0)} m.`;
+  $('len-wrap').style.opacity = $('metric').checked ? 0.4 : 1;
+  $('room-len').disabled = $('metric').checked;
+  // Gitter = Boden
+  if (grid) { calib.root.remove(grid); grid.geometry.dispose(); grid.material.dispose(); }
+  const gs = Math.ceil(Math.max(realSize.x, realSize.z) + 1);
+  grid = new THREE.GridHelper(gs, gs * 10, 0xf5b82e, 0x6a5f50);
+  grid.material.transparent = true; grid.material.opacity = 0.5;
+  calib.root.add(grid);
+  // Startpunkt
+  if (!calib.spawnLocal) {
+    const p = defaultSpawn();
+    calib.spawnLocal = p ? inner.worldToLocal(p.clone()) : null;
+  }
+  const spawn = calib.spawnLocal ? inner.localToWorld(calib.spawnLocal.clone()) : new THREE.Vector3(0, 0, 0);
+  marker.position.copy(spawn);
+  calib.root.add(marker);
+}
+
+// Trefferhöhe-Normale in Weltkoordinaten
+function worldNormalY(hit) { return hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld).y : 0; }
+// tiefster nach oben zeigender Treffer eines senkrechten Strahls bei (x, z)
+function floorAt(x, z, top) {
+  const rc = new THREE.Raycaster(new THREE.Vector3(x, top, z), new THREE.Vector3(0, -1, 0));
+  const hits = rc.intersectObject(calib.inner, true).filter(h => worldNormalY(h) > 0.6);
+  return hits.length ? hits.reduce((a, b) => (a.point.y < b.point.y ? a : b)).point : null;
+}
+function defaultSpawn() {
+  const box = new THREE.Box3().setFromObject(calib.inner);
+  const top = box.max.y + 1;
+  const c = floorAt(0, 0, top);
+  if (c) return c;
+  // Mitte ohne Boden (Loch, Möbel im Weg, falsche Windungsrichtung): Raster von innen nach außen absuchen
+  const pts = [];
+  for (let i = -5; i <= 5; i++) for (let j = -5; j <= 5; j++) pts.push([box.min.x + (i + 5.5) / 11 * (box.max.x - box.min.x), box.min.z + (j + 5.5) / 11 * (box.max.z - box.min.z)]);
+  pts.sort((p, q) => Math.hypot(p[0], p[1]) - Math.hypot(q[0], q[1]));
+  for (const [x, z] of pts) { const p = floorAt(x, z, top); if (p) return p; }
+  return null;
+}
+
+function frameCalibCamera() {
+  const box = new THREE.Box3().setFromObject(calib.pivot);
+  const size = box.getSize(new THREE.Vector3()).length();
+  const c = box.getCenter(new THREE.Vector3());
+  orbitCam.near = Math.max(0.002, size / 2000); orbitCam.far = size * 20; orbitCam.updateProjectionMatrix();
+  orbitCam.position.copy(c).add(new THREE.Vector3(size * 0.6, size * 0.55, size * 0.7));
+  orbit.target.copy(c);
+  orbit.update();
+}
+
+function rotateCalib(axis, angle = Math.PI / 2) {
+  const q = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+  calib.rotQ.premultiply(q);
+  calib.spawnLocal = null;
+  applyCalibration();
+  frameCalibCamera();
+}
+// Kippen X dreht um −90°: Das behebt Z-oben-Scans (Z → Y) mit einem Klick
+$('rot-x').onclick = () => rotateCalib(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+$('rot-z').onclick = () => rotateCalib(new THREE.Vector3(0, 0, 1));
+$('rot-y').onclick = () => rotateCalib(new THREE.Vector3(0, 1, 0));
+$('metric').onchange = () => { applyCalibration(); frameCalibCamera(); };
+$('room-len').oninput = () => { applyCalibration(); };
+$('room-len').onchange = () => { $('room-len').value = clampLen(parseFloat($('room-len').value)); applyCalibration(); };
+$('unlit').onchange = () => applyMaterials(calib.inner, $('unlit').checked);
+
+// Startpunkt per Tipp: nur Bodenflächen (Normale nach oben); ein Tipp auf Wand oder Decke rutscht auf den Boden darunter
+let downAt = null;
+canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerup', e => {
+  if (state.mode !== 'calib' || !downAt) return;
+  if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
+  const ndc = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  const rc = new THREE.Raycaster(); rc.setFromCamera(ndc, orbitCam);
+  const hit = rc.intersectObject(calib.inner, true)[0];
+  if (!hit) return;
+  let p = worldNormalY(hit) >= 0.6 ? hit.point : floorAt(hit.point.x, hit.point.z, hit.point.y + 1e-3);
+  const msg = $('spawn-msg');
+  if (!p) { msg.textContent = 'Dort ist kein Boden. Tippe auf eine waagerechte Fläche, auf der du stehen kannst.'; msg.hidden = false; return; }
+  msg.hidden = true;
+  calib.spawnLocal = calib.inner.worldToLocal(p.clone()); marker.position.copy(p);
+});
+
+function playScan() {
+  const { pivot, root } = calib;
+  root.remove(marker); if (grid) { root.remove(grid); grid.geometry.dispose(); grid.material.dispose(); grid = null; }
+  scene.remove(root);
+  setSide(pivot, THREE.DoubleSide);   // im Spiel von beiden Seiten begehbar und sichtbar
+  const spawn = calib.spawnLocal ? calib.inner.localToWorld(calib.spawnLocal.clone()) : new THREE.Vector3(0, 0.05, 0);
+  const w = { root, collidable: pivot, spawn, spawnYaw: 0, name: calib.file.replace(/\.[^.]+$/, ''), kind: 'scan', floorY: 0 };
+  calib.root = null;
+  setWorld(w);
+  startGame();
+}
+$('calib-play').onclick = () => { audio(); playScan(); lockPointer(); };
+$('calib-back').onclick = () => {
+  if (calib.root) {
+    calib.root.remove(marker);
+    if (grid) { calib.root.remove(grid); grid.geometry.dispose(); grid.material.dispose(); grid = null; }
+    scene.remove(calib.root); disposeObject(calib.root);
+    calib.root = null; calib.pivot = calib.inner = null;
+  }
+  showMenu();
+};
+
+// ---------------- Menü ----------------
+function showMenu() {
+  clearWorld();
+  setWorld(getDemoWorld());
+  activeCam = orbitCam; orbit.enabled = false;
+  orbitCam.near = 0.002; orbitCam.far = 60; orbitCam.updateProjectionMatrix();
+  setMode('menu');
+}
+$('btn-demo').onclick = () => { audio(); setWorld(getDemoWorld()); startGame(); lockPointer(); };
+$('btn-load').onclick = () => $('file-input').click();
+$('file-input').onchange = e => { const f = e.target.files[0]; if (f) loadScanFile(f); e.target.value = ''; };
+$('btn-resume').onclick = () => resume();
+$('btn-restart').onclick = () => { startGame(); lockPointer(); };
+$('btn-menu').onclick = () => showMenu();
+
+// Drag & Drop eines Scans
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && state.mode === 'menu') loadScanFile(f); });
+
+// Test-Hook für automatisierte Prüfungen
+window.__winzling = {
+  state, enemies, startDemo: () => $('btn-demo').click(), keys, P,
+  stepPlayer, stepPhysics, stepEnemies, stepEnemyPhysics, simulate, findWalkable, nextWave, tryFire, scene, playCam, orbitCam, calib, renderer, THREE,
+  spawnEnemy, crumbs, effects, setMode, applyCalibration, touchState, marker, resolveCapsule, moveBody, playerBody, PHYS_DT, queueJump,
+  getUsePL: () => !dragMode, look, clock, detectUp, detectFloorY, loadScanFile,
+};
+
+showMenu();
+frame();
+</script>
