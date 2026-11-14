@@ -1487,7 +1487,7 @@ const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.V
 let physAcc = 0;
 
 // ---------------- Erkundung: Kantengriff, Enterhaken, Gleiter ----------------
-const HOOK = { range: 1.2, minRange: 0.03, retract: 0.9, release: 0.4, maxVel: 1.6, swing: 0.8, flyT: 0.08, cone: 2.5 * Math.PI / 180 };
+const HOOK = { range: 1.2, minRange: 0.03, retract: 0.9, release: 0.4, maxVel: 1.6, swing: 0.8, pullGravity: 0.3, flyT: 0.08, cone: 2.5 * Math.PI / 180 };
 const GLIDER = { sink: 0.16, speed: 0.55, turn: 2.2, stallV: 0.26 };
 const hook = { s: 'idle', anchor: new THREE.Vector3(), ledge: null, ceil: false, L: 0, Lmin: 0.012, cd: 0, flyT: 0, res: null, retract: true, progT: 0, progD: 0, blockT: 0, probeT: 0, valid: false, flash: 0 };
 const glide = { on: false, v: 0, heading: 0, stallT: 0, rate: 0, roll: 0, fov: 78, cdTap: 0 };
@@ -1550,7 +1550,7 @@ function startMantle(t) {
   mantle.to.set(t.x, t.y + 0.0005, t.z);
   state.vel.set(0, 0, 0); state.jumpQueued = false; state.jumpBuf = 0; state.onGround = false;
   if (glide.on) closeGlide();
-  sfx.mantle();
+  if (t.y - state.pos.y > 0.006) sfx.mantle();
 }
 function stepMantle(h, bvh) {
   mantle.t += h;
@@ -1590,6 +1590,8 @@ function hookAnchorFor(bvh, hit, dir) {
       }
     }
   }
+  // Treffer auf einer begehbaren Oberseite: das Seil zieht dorthin, am Ende steht man auf der Fläche (Kante inklusive)
+  if (n.y > 0.65 && hasClearance(bvh, hit.point)) return { anchor: H.clone().addScaledVector(n, 0.0004), ledge: H.clone(), ceil: false, dist: hit.distance };
   return { anchor: H.clone().addScaledVector(n, 0.0004), ledge: null, ceil: n.y < -0.5, dist: hit.distance };
 }
 function hookTarget() {
@@ -1668,7 +1670,7 @@ function stepHooked(h, bvh) {
     if (state.onGround) { releaseHook(false); return; }
   } else if (state.onGround && !hook.retract) { releaseHook(false); return; }
   // Physik: positionsbasiertes Pendel
-  vel.y -= P.gravity * h;
+  vel.y -= P.gravity * h * (hook.retract && hook.L > hook.Lmin ? HOOK.pullGravity : 1);   // beim Einholen zieht das Seil den Winzling fast geradlinig heran
   vel.multiplyScalar(Math.exp(-0.4 * h));
   const ml = Math.hypot(move.x, move.z);
   if (ml > 0.1) {

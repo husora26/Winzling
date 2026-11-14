@@ -4,17 +4,33 @@ Ein Browser-Shooter aus der Ich-Perspektive, bei dem du 2 cm klein bist, mitten 
 
 ## Spielen
 
+Winzling ist ein Erkundungsspiel: Du startest im „Lager“ (dem Startpunkt), sammelst Glitzersplitter, zerstörst Fusselnester und kletterst Kapitel für Kapitel bis zum Leuchtfeuer am höchsten Punkt des Zimmers. Sterben kostet nur Zeit: Du startest nach 1,5 Sekunden wieder im Lager, der Fortschritt bleibt.
+
 | Taste / Eingabe | Aktion |
 | --- | --- |
-| W A S D | Laufen |
-| Maus | Umschauen |
-| Linksklick | Schießen |
-| Leertaste | Springen. In der Luft gedrückt halten zum Gleiten |
-| Shift | Rennen |
+| W A S D | Laufen (Shift: Rennen) |
+| Maus | Umschauen, Linksklick schießt |
+| Leertaste | Springen. An einer Kante gedrückt halten: hochziehen. In der Luft halten: Löwenzahnschirm. Am Seil: loslassen. Mit Gleiter: Tipp in der Luft klappt ihn auf und zu |
+| E oder rechte Maustaste | Enterhaken werfen (ab Kapitel 2), am Seil erneut drücken: lösen |
+| W / S am Seil | Einholen / Nachlassen, A D schwingen |
+| V | Ego-Sicht oder Außenansicht (Mausrad zoomt) |
+| Tab | Zielpfeil auf das nächste Ziel wechseln |
 | R | Nachladen |
-| Esc | Pause |
+| Esc | Pause (dort: „Zurück zum Lager“, Ansicht, Grafikstufe) |
 
-Auf dem Handy: links ein Touch-Stick zum Laufen, rechts Buttons für Schießen, Springen, Rennen und Nachladen. Zum Umschauen wischst du auf dem Bildschirm.
+Auf dem Handy: links ein Touch-Stick zum Laufen, rechts Knöpfe für Feuer, Sprung, Haken, Gleiter, Laden und Sicht. Zum Umschauen wischst du auf dem Bildschirm.
+
+### Ablauf
+
+1. **Bodenland:** 3 Glitzersplitter und das erste Fusselnest. Belohnung: der Enterhaken.
+2. **Möbelgebirge:** Splitter auf Karton, Stuhl und Kissen, dazu das Nest auf der Matratze. Belohnung: der Gleiter.
+3. **Gipfel:** Splitter auf Laptop und Fensterbrett, das Nest auf dem Tisch, der verlorene Ohrstecker im Regal (zurück ins Lager bringen) und das Leuchtfeuer auf dem obersten Regalbrett. Dorthin hilft der Aufwind der Schreibtischlampe.
+
+Den Fortschritt speichert der Browser (localStorage). Im Menü steht dann „Weiter (5/13)“ und „Neu beginnen“. Eigene Raum-Scans bekommen automatisch Ziele, Nester und Aufwinde: Die Platzierung ist deterministisch (gleicher Scan, gleiche Ziele) und prüft Erreichbarkeit über Laufen, Enterhaken und Aufwind.
+
+### Grafik
+
+Im Menü und im Pausenmenü: **Schnell** (einfache Schatten, Pixelverhältnis 1), **Schön** (Standard am Rechner) und **Kino** (Umgebungsverdeckung, leichtes Bloom, Tiefenunschärfe, Vignette, Reflexionen, Staub im Licht, Detailtextur). Fällt die Bildrate drei Sekunden unter 25 fps, schaltet das Spiel eine Stufe zurück. Die Auswahl wird gemerkt.
 
 ## Größenverhältnisse
 
@@ -51,10 +67,12 @@ Hinweis: Das Skript kann auf dem Rechner, auf dem wir es geschrieben haben, nich
 
 ## Technik
 
-- Das Spiel ist eine einzelne HTML-Datei: `index.html`.
+- Das Spiel ist eine einzelne HTML-Datei: `index.html`. Die Spezifikation des Erkundungsmodus steht in `docs/SPEC-erkundung.md`.
 - Grafik mit Three.js, Kollision der Spielfigur als Kapsel gegen das gescannte Netz mit three-mesh-bvh.
 - Alles läuft lokal im Browser. Deine Fotos verlassen dein Gerät nie.
 - Nur die Bibliotheken werden von einem CDN geladen.
+
+- Debug: mit `?debug=1` in der Adresse gibt es `wz.tp(x, y, z)`, `wz.give('hook' | 'glider')` und `wz.objectives` in der Konsole. Für automatische Tests gibt es zusätzlich `window.__winzling`.
 
 ## Lokal starten
 
