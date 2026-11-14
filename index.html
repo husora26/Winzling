@@ -219,6 +219,20 @@ details li { margin-bottom: 4px; }
 #t-view { left: calc(50% + 34px); top: calc(10px + env(safe-area-inset-top, 0px)); width: 44px; height: 44px; font-size: 10px; }
 #t-hook.off, #t-glide.off { opacity: 0.3; }
 
+/* Spielsachen: Funkenstaub, Hinweis, Feder, Boss */
+#staub-line { margin-top: 2px; font-size: 12px; transition: color 0.2s; }
+#staub-line.pulse { color: var(--pencil); }
+#toy-prompt { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding: 6px 14px; font-weight: 700; font-size: 14px; background: var(--glass); border: 1px solid var(--glass-line); border-radius: 10px; white-space: nowrap; }
+#toy-energy { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--glass-line); }
+#toy-bar, #boss-track { height: 9px; border-radius: 5px; background: rgba(255,255,255,0.12); overflow: hidden; margin-top: 4px; }
+#toy-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--mint), var(--pencil)); transition: width 0.2s; }
+#toy-energy.low #toy-fill { animation: stallblink 0.5s steps(2) infinite; }
+#toy-energy.low .hud-label { color: var(--eraser); }
+#boss-bar { left: 50%; transform: translateX(-50%); top: 12px; width: min(320px, 56vw); text-align: center; }
+#boss-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #c0473d, var(--eraser)); transition: width 0.15s; }
+#goal-list li.sub { padding-left: 12px; font-size: 12px; }
+#t-toy { right: calc(202px + env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+
 /* Touch-Steuerung */
 #touch { position: fixed; inset: 0; pointer-events: none; }
 #touch[hidden] { display: none !important; }
@@ -239,6 +253,7 @@ details li { margin-bottom: 4px; }
   .note { padding: 22px 18px 18px; }
   .controls-list { font-size: 13px; }
   #hud-bl { width: 44vw; }
+  #t-toy { bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   .hud-box { padding: 6px 9px; }
   .hud-big { font-size: 18px; }
   #wave-line { font-size: 13px; }
@@ -260,11 +275,13 @@ details li { margin-bottom: 4px; }
   #t-view { left: calc(50% - 22px); top: calc(58px + env(safe-area-inset-top, 0px)); }
   #tools { display: none; }
   #toast { top: max(22%, calc(112px + env(safe-area-inset-top, 0px))); }
+  #toy-prompt { left: max(12px, env(safe-area-inset-left, 0px)); transform: none; bottom: calc(190px + env(safe-area-inset-bottom, 0px)); white-space: normal; max-width: min(180px, calc(100vw - 240px)); font-size: 12px; }
 }
 @media (pointer: coarse) and (max-height: 500px) {
   #toast { left: auto; right: calc(130px + env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: none; width: min(270px, 34vw); font-size: 15px; }
   #toast small { font-size: 11px; margin-top: 2px; }
   #t-glide { right: calc(202px + env(safe-area-inset-right, 0px)); bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
+  #toy-prompt { bottom: calc(112px + env(safe-area-inset-bottom, 0px)); max-width: 36vw; }
 }
 </style>
 
@@ -286,10 +303,12 @@ details li { margin-bottom: 4px; }
   <div class="hud-box" id="hud-bl">
     <div class="hud-label">Lebenskraft</div>
     <div id="hp-bar"><div id="hp-fill"></div></div>
+    <div id="toy-energy" hidden><div class="hud-label" id="toy-energy-name">Aufziehfeder</div><div id="toy-bar"><div id="toy-fill"></div></div></div>
   </div>
   <div class="hud-box" id="hud-br">
     <div class="hud-label">Nadelschleuder</div>
     <div class="hud-big" id="ammo">16 / 48</div>
+    <div class="hud-label" id="staub-line">Staub 2/9</div>
   </div>
   <div id="glider-ribs"></div>
   <div id="goal-marker" hidden><i></i><span id="goal-dist"></span></div>
@@ -298,6 +317,8 @@ details li { margin-bottom: 4px; }
     <div class="tool locked" id="tool-hook"><b>E</b>Haken<div class="cdbar"><i id="hook-cd"></i></div></div>
     <div class="tool locked" id="tool-glide"><b>Leertaste</b><span id="glide-txt">Gleiter</span></div>
   </div>
+  <div id="toy-prompt" hidden></div>
+  <div class="hud-box" id="boss-bar" hidden><div class="hud-label" id="boss-name">Knirsch</div><div id="boss-track"><div id="boss-fill"></div></div></div>
   <div id="toast"></div>
 </div>
 
@@ -308,6 +329,7 @@ details li { margin-bottom: 4px; }
   <button class="tbtn" id="t-reload" type="button">Laden</button>
   <button class="tbtn off" id="t-hook" type="button">Haken</button>
   <button class="tbtn off" id="t-glide" type="button">Gleiter</button>
+  <button class="tbtn" id="t-toy" type="button" hidden>Wecken</button>
   <button class="tbtn" id="t-view" type="button">Sicht</button>
   <button class="tbtn" id="t-pause" type="button" aria-label="Pause">II</button>
 </div>
@@ -330,7 +352,8 @@ details li { margin-bottom: 4px; }
       <kbd>Maus</kbd><span>Umsehen, Linksklick schießt</span>
       <kbd>Leertaste</kbd><span>Springen. An einer Kante gedrückt halten: hochziehen. In der Luft halten: Löwenzahnschirm. Am Seil: loslassen</span>
       <kbd>E</kbd><span>Enterhaken (auch rechte Maustaste), nach dem 1. Kapitel</span>
-      <kbd>Shift</kbd><span>Rennen</span>
+      <kbd>Shift</kbd><span>Rennen (im Auto: Schub)</span>
+      <kbd>F</kbd><span>Spielzeug wecken (kostet Funkenstaub), aufsteigen und absteigen. Flitz fährt, Hoppel springt, Flatter fliegt</span>
       <kbd>R</kbd><span>Nachladen</span>
       <kbd>V</kbd><span>Ego- oder Außenansicht, Mausrad zoomt</span>
       <kbd>Tab</kbd><span>Zielpfeil wechseln</span>
@@ -343,6 +366,7 @@ details li { margin-bottom: 4px; }
       <kbd>Sprung</kbd><span>Springen, an Kanten hochziehen, am Seil loslassen. In der Luft halten: Schirm</span>
       <kbd>Haken</kbd><span>Enterhaken (nach dem 1. Kapitel)</span>
       <kbd>Gleiter</kbd><span>Gleiter auf- und zuklappen (nach dem 2. Kapitel)</span>
+      <kbd>Wecken</kbd><span>Knopf erscheint neben einem Spielzeug: wecken, aufsteigen, später „Absteigen“</span>
       <kbd>Sicht</kbd><span>Ego- oder Außenansicht</span>
       <kbd>Laden</kbd><span>Nachladen</span>
       <kbd>II</kbd><span>Pause</span>
@@ -460,7 +484,7 @@ details li { margin-bottom: 4px; }
       <button class="btn small" type="button" data-gfx="schoen">Schön</button>
       <button class="btn small" type="button" data-gfx="kino">Kino</button>
     </div>
-    <p class="fine kb-only">E Haken · Leertaste Springen/Kante/Gleiter/Lösen · V Ansicht · Tab Zielwechsel · R Nachladen</p>
+    <p class="fine kb-only">E Haken · Leertaste Springen/Kante/Gleiter/Lösen · F Spielzeug wecken/absteigen · V Ansicht · Tab Zielwechsel · R Nachladen</p>
   </div>
 </div>
 
@@ -644,6 +668,19 @@ function letterTex(ch, bg) {
 const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...o });
 const ROOM0 = { W: 4, D: 3.5, H: 2.5 };   // Maße des Demo-Zimmers: Die Möbel sind dafür gebaut und werden für andere Räume skaliert und an Ecken verankert
 
+// Verankerung der Möbelgruppen: Ecke im Demo-Zimmer (x, z) und dieselbe Ecke im echten Zimmer. Möbel und Spielsachen nutzen dieselbe Transformation.
+const FURN_ANCHORS = {
+  bett:  { x: -ROOM0.W / 2, z: -ROOM0.D / 2, to: (W, D) => [-W / 2, -D / 2] },
+  tisch: { x:  ROOM0.W / 2, z: -ROOM0.D / 2, to: (W, D) => [ W / 2, -D / 2] },
+  mitte: { x: 0, z: 0, to: () => [0, 0] },
+  tuer:  { x:  ROOM0.W / 2, z:  ROOM0.D / 2, to: (W, D) => [ W / 2,  D / 2] },
+};
+// Demo-Punkt p = [x, y, z] an einer Verankerung → Punkt im Raum der Größe W × D bei Möbelmaßstab s (im Demo-Zimmer die Identität)
+function furniturePoint(anchor, p, W = ROOM0.W, D = ROOM0.D, s = 1) {
+  const a = FURN_ANCHORS[anchor], [nx, nz] = a.to(W, D);
+  return [nx + s * (p[0] - a.x), p[1] * s, nz + s * (p[2] - a.z)];
+}
+
 // Hilfsfunktionen zum Bauen in eine Gruppe: solid = begehbar / kollidiert, deco = nur Optik und Licht
 function makeBuilders(solid, deco) {
   const add = (geo, mat, x, y, z, parent = solid, opts = {}) => {
@@ -744,6 +781,7 @@ function buildFurniture(solidRoot, decoRoot, W, D, H, o = {}) {
     solidRoot.add(so); decoRoot.add(de);
     return makeBuilders(so, de);
   };
+  const anchorN = name => { const a = FURN_ANCHORS[name], [nx, nz] = a.to(W, D); return anchor(a.x, a.z, nx, nz); };
   const W0 = ROOM0.W, D0 = ROOM0.D;
   const bookCols = [0xb8483c, 0x2f5d73, 0xe0a63a, 0x5f8f4e, 0x7b5aa6, 0xd9d0bc, 0x333a4a];
   const woodDark = M(0x6b4a33, { roughness: 0.6 });
@@ -751,7 +789,7 @@ function buildFurniture(solidRoot, decoRoot, W, D, H, o = {}) {
 
   // Bett (links), auf Beinen: darunter ist eine dunkle Höhle
   {
-    const { add, box, ramp } = anchor(-W0 / 2, -D0 / 2, -W / 2, -D / 2);
+    const { add, box, ramp } = anchorN('bett');
     const bx = -1.5, bz = -0.75;
     for (const [dx, dz] of [[-0.46, -0.96], [0.46, -0.96], [-0.46, 0.96], [0.46, 0.96]]) box(0.06, 0.25, 0.06, woodDark, bx + dx, 0, bz + dz);
     box(1.0, 0.12, 2.0, woodDark, bx, 0.25, bz);
@@ -770,7 +808,7 @@ function buildFurniture(solidRoot, decoRoot, W, D, H, o = {}) {
 
   // Schreibtisch (hinten rechts), Stuhl, Aufstiege, Lampe, Regal, Kabel, Fenster
   {
-    const { add, box, ramp, deco } = anchor(W0 / 2, -D0 / 2, W / 2, -D / 2);
+    const { add, box, ramp, deco } = anchorN('tisch');
     // Fenster an der Rückwand
     if (o.window !== false) {
       const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.0), new THREE.MeshBasicMaterial({ color: 0xcfe6ff }));
@@ -865,7 +903,7 @@ function buildFurniture(solidRoot, decoRoot, W, D, H, o = {}) {
   // Teppich, Spielzeug und Krimskrams auf dem Boden (Mitte)
   const rugMat = M(0xffffff, { map: rugTex, roughness: 1 });
   {
-    const { add, box } = anchor(0, 0, 0, 0);
+    const { add, box } = anchorN('mitte');
     // Teppich (3 mm hoch, man kann draufsteigen)
     box(1.6, 0.003, 1.1, rugMat, 0.1, 0, 0.45, { cast: false });
     const letters = [['W', '#b8483c'], ['I', '#2f5d73'], ['N', '#5f8f4e'], ['Z', '#7b5aa6']];
@@ -890,7 +928,7 @@ function buildFurniture(solidRoot, decoRoot, W, D, H, o = {}) {
 
   // Tür vorne
   if (o.door !== false) {
-    const { box } = anchor(W0 / 2, D0 / 2, W / 2, D / 2);
+    const { box } = anchorN('tuer');
     box(0.9, 2.0, 0.04, M(0xe9e4d8, { roughness: 0.5 }), 1.2, 0.012, D0 / 2 - 0.02, { cast: false });
   }
   return { rugMat };
@@ -1146,6 +1184,7 @@ const state = {
   moving: false, sprinting: false,
   jumpQueued: false, jumpBuf: 0,   // Sprung-Tastendruck (Flanke), verfällt nach 0,12 s
   fallSpeed: 0,
+  staub: 2, riding: null, prevView: 'fp', prevCamDist: 0.06, camLift: 0,   // Spielsachen
 };
 // Körper des Spielers für die Kollision: Kapsel vom Fuß (pos) aufwärts
 const playerBody = { pos: state.pos, vel: state.vel, onGround: false, r: P.radius, y0: P.radius, y1: P.height - P.radius, canStep: true, supportY: 0 };
@@ -1374,10 +1413,12 @@ function updateHud() {
   updateGoalHud();
   updateGoalArrow();
   updateTools();
+  updateToyHud();
 }
 
 // ---------------- Welten laden ----------------
 function clearWorld() {
+  disposeToys();
   disposeObjectives();
   resetMovers();
   state.carrying = null;
@@ -1443,7 +1484,7 @@ function startGame(fresh = false) {
   w.roomId = roomIdFor(w);
   const old = loadProgress(w.roomId);
   state.best = old?.best || 0;
-  if (fresh) writeProgress(w.roomId, { v: 1, done: [], chapter: 1, tools: { hook: false, glider: false }, ammoReserve: 48, time: 0, deaths: 0, best: state.best, won: false });
+  if (fresh) writeProgress(w.roomId, { v: 1, done: [], chapter: 1, tools: { hook: false, glider: false }, ammoReserve: 48, time: 0, deaths: 0, best: state.best, won: false, toys: { found: [], tamed: false, staub: TOYC.staubStart, ring: null, freeUsed: false } });
   const sv = fresh ? null : old;
   state.pos.copy(w.spawn);
   state.pos.y += 0.003;
@@ -1452,10 +1493,11 @@ function startGame(fresh = false) {
   state.hp = 100; state.ammo = state.mag; state.reloading = 0; state.score = 0;
   state.ammoRes = THREE.MathUtils.clamp(sv?.ammoReserve ?? 48, 0, 96); state.ammoRegen = 0;
   state.time = sv?.time || 0; state.deaths = sv?.deaths || 0; state.won = false; state.free = !!sv?.won;
-  state.respawnT = 0; state.track = 0; state.chapter = 1; lastGoalKey = '';
+  state.respawnT = 0; state.track = 0; state.chapter = 1; lastGoalKey = ''; state.riding = null; state.camLift = 0;
   state.onGround = false; state.jumpQueued = false; state.jumpBuf = 0; physAcc = 0;
   resetMovers();
   initObjectives(w, sv);
+  initToys(w, sv);
   state.won = !!objDone('G');
   activeCam = playCam;
   orbit.enabled = false;
@@ -1464,6 +1506,7 @@ function startGame(fresh = false) {
   else toast(w.name, 'Sammle die Glitzersplitter und zerstöre das Fusselnest.', 3.5);
 }
 function clearWorldDynamic() {
+  disposeToys();
   for (const e of [...enemies]) removeEnemy(e);
   for (const c of crumbs) scene.remove(c.mesh);
   crumbs.length = 0;
@@ -1528,6 +1571,7 @@ addEventListener('keydown', e => {
     if (e.code === 'Escape' || e.code === 'KeyP') pause();
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) queueJump(); }
     if (e.code === 'KeyE' && !e.repeat) fireHook();
+    if (e.code === 'KeyF' && !e.repeat) toyAction();
     if (e.code === 'KeyV' && !e.repeat) toggleView();
     if (e.code === 'Tab') { e.preventDefault(); if (!e.repeat) state.track++; }
   } else if (state.mode === 'paused' && (e.code === 'KeyP')) resume();
@@ -1541,7 +1585,7 @@ addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => {
   if (state.mode !== 'play' || state.view !== 'tp') return;
   e.preventDefault();
-  state.camDist = THREE.MathUtils.clamp(state.camDist * (e.deltaY > 0 ? 1.12 : 1 / 1.12), 0.03, 0.2);
+  state.camDist = THREE.MathUtils.clamp(state.camDist * (e.deltaY > 0 ? 1.12 : 1 / 1.12), 0.03, state.riding ? 0.6 : 0.2);
 }, { passive: false });
 canvas.addEventListener('mousedown', e => {
   if (state.mode !== 'play' || isTouch) return;
@@ -1604,7 +1648,7 @@ canvas.addEventListener('touchmove', e => {
       const a = [...e.touches].find(x => x.identifier === touchState.lookId), b = [...e.touches].find(x => x.identifier === touchState.pinch.b);
       if (a && b) {
         const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-        if (touchState.pinch.d > 1 && d > 1) state.camDist = THREE.MathUtils.clamp(state.camDist * touchState.pinch.d / d, 0.03, 0.2);
+        if (touchState.pinch.d > 1 && d > 1) state.camDist = THREE.MathUtils.clamp(state.camDist * touchState.pinch.d / d, 0.03, state.riding ? 0.6 : 0.2);
         touchState.pinch.d = d;
       }
       if (t.identifier === touchState.lookId) touchState.lookLast = { x: t.clientX, y: t.clientY };
@@ -1649,6 +1693,7 @@ holdBtn('t-reload', () => reload());
 holdBtn('t-hook', () => fireHook());
 holdBtn('t-glide', () => { if (state.tools.glider && !state.onGround && hook.s !== 'fest') queueJump(); });
 holdBtn('t-view', () => toggleView());
+holdBtn('t-toy', () => toyAction());
 holdBtn('t-pause', () => pause());
 
 
@@ -1789,7 +1834,7 @@ function hookTarget() {
   return centre;
 }
 function fireHook() {
-  if (state.mode !== 'play' || state.respawnT > 0 || !state.tools.hook) return;
+  if (state.mode !== 'play' || state.respawnT > 0 || !state.tools.hook || state.riding) return;
   if (hook.s === 'fest') { releaseHook(false); return; }
   if (hook.s !== 'idle' || hook.cd > 0 || mantle.on) return;
   const r = hookTarget();
@@ -1945,6 +1990,10 @@ function stepGlide(h, bvh) {
 function stepPlayer(h) {
   const bvh = state.world.collider.geometry.boundsTree;
   if (state.respawnT > 0) return;
+  if (state.riding) {   // Reiten: die Spielerkapsel ruht, der Sitz folgt dem Spielzeug (stepToysPhysics)
+    state.jumpQueued = false; state.jumpBuf = 0; state.vel.set(0, 0, 0); state.moving = false; state.sprinting = false; state.onGround = true; state.fallSpeed = 0;
+    return;
+  }
   fwd.set(-Math.sin(state.yaw), 0, -Math.cos(state.yaw));
   right.set(-fwd.z, 0, fwd.x);
   move.set(0, 0, 0);
@@ -2023,8 +2072,9 @@ function updateView(dt) {
     const bvh = state.world.collider.geometry.boundsTree;
     camDirV.set(0, 0, -1).applyEuler(playCam.rotation);
     // Schulterversatz zuerst gegen die Welt prüfen (Wand an der rechten Schulter), dann nach hinten
-    camTmp.set(state.pos.x, state.pos.y + 0.0235, state.pos.z);
-    camAim.set(state.pos.x + Math.cos(state.yaw) * 0.007, state.pos.y + 0.0235, state.pos.z - Math.sin(state.yaw) * 0.007);
+    const lift = 0.0235 + state.camLift;
+    camTmp.set(state.pos.x, state.pos.y + lift, state.pos.z);
+    camAim.set(state.pos.x + Math.cos(state.yaw) * 0.007, state.pos.y + lift, state.pos.z - Math.sin(state.yaw) * 0.007);
     viewRay.origin.copy(camTmp); viewRay.direction.copy(camAim).sub(camTmp);
     const sideLen = viewRay.direction.length(); viewRay.direction.divideScalar(sideLen);
     const sideHit = bvh.raycastFirst(viewRay, THREE.DoubleSide, 0, sideLen + 0.003);
@@ -2056,6 +2106,7 @@ function stepPhysics(dt) {
   let n = 0;
   while (physAcc >= PHYS_DT && n < MAX_PHYS_STEPS) {
     stepPlayer(PHYS_DT);
+    stepToysPhysics(PHYS_DT);
     for (const e of enemies) stepEnemyPhysics(e, PHYS_DT);
     physAcc -= PHYS_DT; n++;
   }
@@ -2144,6 +2195,7 @@ function destroyNest(o, at) {
   addPuff(o.pos.clone().add(new THREE.Vector3(0, 0.01, 0)), 0xb6aebf, 40, 0.002, 0.12);
   sfx.pop();
   for (const e of [...enemies]) if (e.nest === o) { addPuff(e.pos, 0xb6aebf, 12, 0.0012, 0.06); removeEnemy(e); }
+  toysOnNestDestroyed(o);
   for (let i = 0; i < 3; i++) {
     const p = findWalkable(o.pos, 0.01, 0.12, [-0.03, 0.03]) || o.pos;
     spawnCrumb(p, i < 2 ? 'kruemel' : 'kissen');
@@ -2203,6 +2255,7 @@ function relocateHome(e) {
 function stepEnemies(dt) {
   const bvh = state.world.collider.geometry.boundsTree;
   const playerCenter = state.pos.clone(); playerCenter.y += P.height / 2;
+  const rt = state.riding, riderC = rt ? new THREE.Vector3(rt.body.pos.x, toyFootY(rt) + Math.max(rt.def.r, rt.def.h * 0.25), rt.body.pos.z) : null;
   for (const e of [...enemies]) {
     e.hitCd = Math.max(0, e.hitCd - dt);
     e.flash = Math.max(0, e.flash - dt);
@@ -2212,12 +2265,16 @@ function stepEnemies(dt) {
       continue;
     }
     e.mesh.scale.setScalar(e.r);
-    const to = eTo.copy(playerCenter).sub(e.pos);
+    // Ziel: Lockvogel (Maus) vor Bär vor Spieler; Reiter zählt mit dem Spielzeug als Ziel
+    e.lureT = Math.max(0, (e.lureT || 0) - dt);
+    const lt = toyTargetFor(e, dt);
+    const tgt = lt ? lt.pos : riderC || playerCenter;
+    const to = eTo.copy(tgt).sub(e.pos);
     const dist = to.length();
     e.alarm = Math.max(0, e.alarm - dt);
     const dHome = e.pos.distanceTo(e.home);
     if (dHome > 1.0 || e.pos.y < e.home.y - 0.35) { relocateHome(e); }
-    const near = dist < 0.6 && Math.abs(to.y) < 0.15 && state.respawnT <= 0;
+    const near = (lt || dist < 0.6) && Math.abs(to.y) < 0.15 && state.respawnT <= 0;
     const alert = near || e.alarm > 0;
     let mode = 'patrol';
     if (e.returning) { if (dHome < 0.12) e.returning = false; else mode = 'return'; }
@@ -2248,11 +2305,14 @@ function stepEnemies(dt) {
     const f = e.flash > 0;
     for (const m of e.mesh.userData.flashMats) m.emissive.setRGB(f ? 0.8 : 0, f ? 0.3 : 0, f ? 0.2 : 0);
     // Angriff: der Rückstoß geht durch die Kollision, man wird nicht in Wände gedrückt
-    if (state.respawnT <= 0 && dist < e.r + P.radius + 0.004 + P.height * 0.3 && e.hitCd <= 0) {
+    if (lt) {
+      if (lt.kind === 'bear' && e.hitCd <= 0 && dist < e.r + lt.toy.body.r + 0.004) {
+        e.hitCd = 0.9; lt.toy.energy -= TOYC.bearHitCost; lt.toy.hitFlash = 0.12; sfx.hurt();
+      }
+    } else if (state.respawnT <= 0 && dist < e.r + (rt ? Math.max(rt.def.r, 0.02) + 0.006 : P.radius + 0.004 + P.height * 0.3) && e.hitCd <= 0) {
       e.hitCd = 0.9;
-      state.hp -= e.dmg; state.hurtFlash = 0.8; sfx.hurt();
-      ePush.copy(to).setY(0).normalize().multiplyScalar(0.003);
-      moveBody(bvh, playerBody, ePush, moveAux);
+      state.hp -= e.dmg * (rt ? 0.5 : 1); state.hurtFlash = 0.8; sfx.hurt();
+      if (!rt) { ePush.copy(to).setY(0).normalize().multiplyScalar(0.003); moveBody(bvh, playerBody, ePush, moveAux); }
       if (state.hp <= 0) die();
     }
   }
@@ -2270,6 +2330,7 @@ function die() {
   if (state.respawnT > 0) return;
   state.deaths++; state.respawnT = 1.5; state.hp = 0;
   releaseHook(false); resetMovers(); state.vel.set(0, 0, 0);
+  for (const t of toyList()) { if (t.state !== 'schlaf') sleepToy(t, 'tod'); t.pending = 0; if (t.id === 'knirsch' && !t.tamed) t.hp = t.maxHp; }
   if (state.carrying) { state.carrying.mesh.visible = true; state.carrying = null; }
   toast('Plattgefusselt', 'Zurück im Lager. Der Fortschritt bleibt.', 1.5);
   saveProgress();
@@ -2277,6 +2338,7 @@ function die() {
 function respawn() {
   const w = state.world;
   state.respawnT = 0; state.hp = 100;
+  resetToysHome();
   state.pos.copy(w.spawn); state.pos.y += 0.003; state.vel.set(0, 0, 0);
   state.yaw = w.spawnYaw || 0; state.pitch = -0.05; state.onGround = false; physAcc = 0;
   resetMovers();
@@ -2285,6 +2347,7 @@ function respawn() {
 }
 function toLager() {
   const w = state.world;
+  resetToysHome();
   state.pos.copy(w.spawn); state.pos.y += 0.003; state.vel.set(0, 0, 0);
   state.yaw = w.spawnYaw || 0; state.pitch = -0.05; state.onGround = false; physAcc = 0;
   resetMovers();
@@ -2302,19 +2365,27 @@ const hsTmp = new THREE.Vector3(), hsSph = new THREE.Sphere();
 // Trefferprüfung eines Schusses: nächster Treffer aus Welt, Gegnern und Nestern
 function hitscan(origin, dir) {
   ray.origin.copy(origin); ray.direction.copy(dir);
-  let best = Infinity, target = null, nest = null;
+  let best = Infinity, target = null, nest = null, toy = null;
   const wh = state.world.collider.geometry.boundsTree.raycastFirst(ray, THREE.DoubleSide);
   if (wh) best = wh.distance;
+  const bs = bossToy();
+  if (bs) {
+    const n = toySpheres(bs);
+    for (let i = 0; i < n; i++) {
+      hsSph.center.set(toySB[i].x, toySB[i].y, toySB[i].z); hsSph.radius = toySB[i].r * 1.1;
+      if (ray.intersectSphere(hsSph, hsTmp)) { const d = hsTmp.distanceTo(origin); if (d < best) { best = d; toy = bs; target = null; nest = null; } }
+    }
+  }
   for (const e of enemies) {
     hsSph.set(e.pos, e.r * 1.15);
-    if (ray.intersectSphere(hsSph, hsTmp)) { const d = hsTmp.distanceTo(origin); if (d < best) { best = d; target = e; nest = null; } }
+    if (ray.intersectSphere(hsSph, hsTmp)) { const d = hsTmp.distanceTo(origin); if (d < best) { best = d; target = e; nest = null; toy = null; } }
   }
   for (const o of state.world.objectives || []) {
     if (o.type !== 'nest' || o.done) continue;
     hsSph.center.set(o.pos.x, o.pos.y + 0.0115, o.pos.z); hsSph.radius = 0.0138;
-    if (ray.intersectSphere(hsSph, hsTmp)) { const d = hsTmp.distanceTo(origin); if (d < best) { best = d; nest = o; target = null; } }
+    if (ray.intersectSphere(hsSph, hsTmp)) { const d = hsTmp.distanceTo(origin); if (d < best) { best = d; nest = o; target = null; toy = null; } }
   }
-  return { best, target, nest, wall: !!wh };
+  return { best, target, nest, toy, wall: !!wh };
 }
 function tryFire() {
   if (state.mode !== 'play' || state.respawnT > 0 || state.fireCd > 0 || state.reloading > 0) return;
@@ -2334,7 +2405,7 @@ function tryFire() {
     if (dir.lengthSq() < 1e-10) dir.set(0, 0, -1); else dir.normalize();
   }
   const res = hitscan(origin, dir);
-  const { target, nest } = res;
+  const { target, nest, toy } = res;
   const end = origin.clone().addScaledVector(dir, Math.min(res.best, 8));
   addTracer(muzzleWorld(), end);
   const hitMark = () => { $('crosshair').classList.add('hit'); setTimeout(() => $('crosshair').classList.remove('hit'), 90); };
@@ -2343,18 +2414,14 @@ function tryFire() {
     target.vel.x += dir.x * 0.15; target.vel.z += dir.z * 0.15; target.vel.y += 0.25; target.onGround = false;
     hitMark();
     addPuff(end, target.kind === 'fussel' ? 0xcfc8d6 : 0xe86a6a, 8, 0.0008, 0.04);
-    if (target.hp <= 0) {
-      state.score += target.points;
-      addPuff(target.pos, target.kind === 'fussel' ? 0xb6aebf : 0xc0473d, 30, 0.0015, 0.09);
-      sfx.pop();
-      if (Math.random() < 0.3) spawnCrumb(target.pos.clone().add(new THREE.Vector3(0, -target.r, 0)));
-      removeEnemy(target);
-    }
+    if (target.hp <= 0) killEnemy(target, 'spieler');
+  } else if (toy) {
+    hitMark(); addPuff(end, 0x7fd87f, 8, 0.0008, 0.04);
+    damageBoss(toy, 1);
   } else if (nest) {
-    nest.hp--; nest.flash = 0.12; sfx.hit(); hitMark();
+    sfx.hit(); hitMark();
     addPuff(end, 0xcfc8d6, 8, 0.0008, 0.04);
-    for (const e of enemies) if (e.nest === nest) e.alarm = 6;
-    if (nest.hp <= 0) destroyNest(nest);
+    damageNest(nest, 1);
   } else if (res.wall) {
     addPuff(end, 0xfff1b0, 6, 0.0006, 0.03);
   }
@@ -2420,6 +2487,7 @@ function saveProgress() {
   writeProgress(w.roomId, {
     v: 1, done: w.objectives.filter(o => o.done).map(o => o.id), chapter: state.chapter, tools: { hook: state.tools.hook, glider: state.tools.glider },
     ammoReserve: state.ammoRes, time: Math.round(state.time * 10) / 10, deaths: state.deaths, best: state.best || prev?.best || 0, won: state.won || state.free,
+    toys: w.toySave ? { found: [...w.toySave.found], tamed: !!w.toySave.tamed, staub: state.staub, ring: w.toySave.ring, freeUsed: !!w.toySave.freeUsed } : (prev?.toys || undefined),
   });
 }
 function refreshMenuSave() {
@@ -2543,8 +2611,10 @@ function completeObjective(o, silent = false) {
   if (o.type === 'fund') state.carrying = null;
   if (silent) return;
   sfx.goal();
+  if (o.type === 'splitter') addStaub(2); else if (o.type === 'nest') addStaub(3); else if (o.type === 'spiel') addStaub(2);
   if (o.type === 'splitter') { state.score += 200; toast('Glitzersplitter!', `${splitterCount().done} von ${splitterCount().total}`, 1.6); }
   else if (o.type === 'nest') { state.score += 500; toast('Nest zerstört', '', 1.6); }
+  else if (o.type === 'spiel') { state.score += 300; toast('Bonusziel geschafft', `${o.label} · +2 Funkenstaub`, 3); }
   else if (o.type === 'fund') { state.score += 300; toast('Ohrstecker im Lager', 'Geschafft.', 2); }
   else if (o.type === 'werkzeug') toast(o.tool === 'hook' ? 'Enterhaken erhalten' : 'Gleiter erhalten', o.tool === 'hook' ? 'E oder rechte Maustaste wirft den Haken.' : 'Leertaste in der Luft klappt ihn auf und zu.', 3.5);
   recomputeChapter(true);
@@ -2556,13 +2626,13 @@ const splitterCount = () => { const l = state.world.objectives.filter(o => o.typ
 function initObjectives(w, sv) {
   disposeObjectives();
   const gen = buildObjectives(w);
-  w.objectives = gen.objectives; w.updrafts = gen.updrafts;
+  w.objectives = gen.objectives; w.updrafts = gen.updrafts; w.toyPlan = gen.toys || [];
   state.tools.hook = !!sv?.tools?.hook; state.tools.glider = !!sv?.tools?.glider;
   for (const o of w.objectives) {
     o.done = false;
     o.hp = o.type === 'nest' ? 8 : 0;
     o.resupT = 0;
-    if (o.pos) o.mesh = makeObjectiveMesh(o);
+    if (o.pos && o.type !== 'spiel') o.mesh = makeObjectiveMesh(o);
     if (sv && sv.done.includes(o.id)) completeObjective(o, true);
   }
   for (const o of w.objectives) if (o.type === 'werkzeug' && o.done) state.tools[o.tool] = true;
@@ -2600,6 +2670,7 @@ function demoObjectives(w) {
     }
     return o;
   });
+  for (const g of TOY_GOALS) objectives.push(toyGoalObjective(g, ROOM0.W, ROOM0.D, 1));   // Bonusziele T1 bis T6
   // Werkzeug W1 liegt dort, wo Nest N1 war
   const n1 = objectives.find(o => o.id === 'N1'), w1 = objectives.find(o => o.id === 'W1');
   if (n1 && w1) w1.pos.copy(n1.pos);
@@ -2627,6 +2698,7 @@ function buildObjectives(w) {
   if (w.kind === 'demo') return demoObjectives(w);
   const gen = generateScanObjectives(w);
   if (w.extraUpdrafts) gen.updrafts.push(...w.extraUpdrafts.map(u => ({ ...u })));   // Foto-Raum: Aufwinde der Spielmöbel (Lampe, Laptop, Sonnenfleck)
+  if (w.kind === 'foto' && w.furn) for (const g of TOY_GOALS) if (g.pos) gen.objectives.push(toyGoalObjective(g, w.furn.W, w.furn.D, w.furn.s));   // T1 bis T3 und T5 an den verankerten Möbeln
   return gen;
 }
 
@@ -2716,6 +2788,8 @@ function trackList() {
     if (o.type === 'werkzeug' && !toolReady(o)) continue;
     l.push(o);
   }
+  for (const o of w.objectives) if (o.type === 'spiel' && !o.done && o.pos && o.chapter <= state.chapter) l.push(o);
+  l.push(...toyPins());   // gefundene Spielsachen
   return l;
 }
 let lastGoalKey = '';
@@ -2736,12 +2810,14 @@ function updateGoalHud() {
   const trk = trackList();
   const cur = trk.length ? trk[state.track % trk.length] : null;
   const sc = splitterCount();
-  const key = c + '|' + lines.map(l => l[0] + l[1]).join(';') + '|' + (cur ? cur.id : '') + '|' + sc.done;
+  const bonus = w.objectives.filter(o => o.type === 'spiel' && (o.chapter === c || (o.chapter < c && !o.done))).slice(0, 3).map(o => ['Bonus: ' + o.label, o.done, true]);
+  const shown = [...lines.slice(0, 4), ...bonus];
+  const key = c + '|' + shown.map(l => l[0] + l[1]).join(';') + '|' + (cur ? cur.id : '') + '|' + sc.done;
   if (key === lastGoalKey) return;
   lastGoalKey = key;
   $('wave-line').textContent = `Kapitel ${c} · ${CHAPTER_TITLES[c - 1]}`;
   const ul = $('goal-list'); ul.textContent = '';
-  for (const [txt, done] of lines.slice(0, 4)) { const li = document.createElement('li'); li.textContent = (done ? '✓ ' : '· ') + txt; if (done) li.className = 'done'; ul.appendChild(li); }
+  for (const [txt, done, sub] of shown) { const li = document.createElement('li'); li.textContent = (done ? '✓ ' : '· ') + txt; li.className = (done ? 'done ' : '') + (sub ? 'sub' : ''); ul.appendChild(li); }
   $('split-line').textContent = `Splitter ${sc.done}/${sc.total}`;
 }
 const gmV = new THREE.Vector3();
@@ -3008,10 +3084,41 @@ function generateScanObjectives(w) {
   const strays = [];
   for (let i = 0; i < 6; i++) { const c = pick(t0cands, { minD: 0.3 }); if (c) strays.push(new THREE.Vector3(c.x, c.y, c.z)); }
   const pickups = scatterPickups(w, objectives, rng);
+  // Spielsachen: deterministisch über seeded(hash(roomId) + 77), nur auf erreichbaren, ebenen Flächen
+  const tt0 = performance.now();
+  const trng = seeded(seedFrom(w.roomId || 'scan') + 77);
+  const toyPlan = [], goalPts = objectives.filter(o => o.pos).map(o => o.pos);
+  const toyOk = (c, id, skipGoal = null) => {
+    const d = TOYS[id];
+    if (dist3(c, spawn) < 0.4) return false;
+    for (const q of goalPts) if (q !== skipGoal && dist3(c, q) < 0.25) return false;
+    for (const q of toyPlan) if (dist3(c, q.pos) < 0.35) return false;
+    if (first(c.x, c.y + 0.001, c.z, UPV, d.h + 0.01)) return false;
+    const rr = Math.max(d.r, 0.03);
+    for (const [dx, dz] of [[rr, 0], [-rr, 0], [0, rr], [0, -rr]]) { const f = first(c.x + dx, c.y + 0.02, c.z + dz, DOWN, 0.04); if (!f || Math.abs(f.point.y - c.y) > 0.004) return false; }
+    return toyFree(bvh, id, c);
+  };
+  const placeToy = (id, pool, skipGoal = null) => {
+    if (!pool.length) return false;
+    for (let t = 0; t < 120; t++) {
+      const c = pool[Math.floor(trng() * pool.length)];
+      if (toyOk(c, id, skipGoal)) { toyPlan.push({ id, pos: new THREE.Vector3(c.x, c.y, c.z), yaw: trng() * Math.PI * 2 }); return true; }
+    }
+    return false;
+  };
+  const floorPool = cands.filter(c => c.tier === 0 && c.reach), midPool = cands.filter(c => c.tier === 1 && reachable(c)), anyPool = cands.filter(c => c.reach);
+  const nc3 = nests[2], n3o = nc3 ? objectives.find(o => o.id === 'N3') : null;
+  if (nc3 && n3o) placeToy('knirsch', cands.filter(c => c.patch === nc3.patch && Math.abs(c.y - nc3.y) < 0.02 && dist3(c, nc3) >= 0.1 && dist3(c, nc3) <= 0.5), n3o.pos);
+  for (const id of ['flitz', 'schnurr', 'hoppel']) placeToy(id, floorPool.length ? floorPool : anyPool);
+  for (const id of ['watte', 'flatter']) { if (!(midPool.length && placeToy(id, midPool))) placeToy(id, floorPool.length ? floorPool : anyPool); }
+  if (toyPlan.length) objectives.push({ id: 'T0', type: 'spiel', chapter: 1, pos: null, required: false, label: 'Wecke ein Spielzeug' });
+  if (toyPlan.some(p => p.id === 'watte')) objectives.push({ id: 'T4', type: 'spiel', chapter: 2, pos: null, required: false, label: 'Lass den Bären zwei Wachen besiegen' });
+  if (toyPlan.some(p => p.id === 'knirsch')) objectives.push({ id: 'T6', type: 'spiel', chapter: 3, pos: null, required: false, label: 'Zähme den Dino' });
+  SCAN_STATS.toyMs = performance.now() - tt0;
   SCAN_STATS.updrafts = updrafts.length; SCAN_STATS.rays = rays;
   SCAN_STATS.ms = performance.now() - t0;
   console.info(`Scan-Ziele: ${objectives.length} Ziele, ${cands.length} Kandidaten, ${updrafts.length} Aufwinde, ${SCAN_STATS.ms.toFixed(0)} ms`);
-  return { objectives, updrafts, strays, pickups };
+  return { objectives, updrafts, strays, pickups, toys: toyPlan };
 }
 
 
@@ -3073,7 +3180,7 @@ function updateFigure(dt) {
   figure.visible = show;
   if (!show) return;
   figure.position.copy(state.pos);
-  figure.rotation.y = state.yaw;
+  figure.rotation.y = state.riding ? state.riding.yaw : state.yaw;
   const walking = state.onGround && state.moving && !mantle.on && hook.s !== 'fest';
   if (walking) fig.phase += dt * (state.sprinting ? 14 : 10);
   const sw = walking ? Math.sin(fig.phase) * 0.7 : 0;
@@ -3092,7 +3199,7 @@ function setView(v, save = true) {
   gun.visible = state.view === 'fp';
   $('crosshair').style.display = '';
 }
-function toggleView() { setView(state.view === 'fp' ? 'tp' : 'fp'); }
+function toggleView() { if (state.riding) return; setView(state.view === 'fp' ? 'tp' : 'fp'); }
 
 // Seil: Linie mit 8 Punkten (Durchhang bei schlaffem Seil) und Widerhaken-Kegel am Anker
 const ropeGeo = new THREE.BufferGeometry();
@@ -3292,6 +3399,1070 @@ function renderFrame(dt) {
 addEventListener('resize', () => { if (GFX.comp) GFX.comp.setSize(innerWidth, innerHeight); });
 document.querySelectorAll('[data-gfx]').forEach(b => b.addEventListener('click', () => setGfx(b.dataset.gfx)));
 
+// ================================================================
+// Lebendige Spielsachen: Funkenstaub, Wecken, Reiten, Begleiter, Dino-Boss (siehe docs/SPEC-spielsachen.md)
+// Alle Spielsachen sind eigene Entwürfe aus Box, Zylinder, Kugel und Kegel. Sie liegen nicht in der BVH.
+// ================================================================
+const TOYS = {
+  flitz:   { name: 'Flitz',   what: 'Auto',          len: 0.10, h: 0.04, r: 0.022, body: 'sphere',  chapter: 1, cost: 2, energy: 25, ride: true,  seat: [0, 0.034, 0.008], camY: 0.012 },
+  schnurr: { name: 'Schnurr', what: 'Aufziehmaus',   len: 0.06, h: 0.03, r: 0.015, body: 'sphere',  chapter: 1, cost: 1, energy: 15, ride: false },
+  hoppel:  { name: 'Hoppel',  what: 'Schaukelpferd', len: 0.14, h: 0.12, r: 0.025, y0: 0.025, y1: 0.07, body: 'capsule', chapter: 2, cost: 3, energy: 30, ride: true, seat: [0, 0.085, 0.004], camY: 0.035 },
+  watte:   { name: 'Watte',   what: 'Plüschbär',     len: 0.08, h: 0.12, r: 0.035, body: 'sphere',  chapter: 2, cost: 3, energy: 40, ride: false },
+  flatter: { name: 'Flatter', what: 'Holzvogel',     len: 0.07, h: 0.04, r: 0.02,  body: 'sphere',  chapter: 3, cost: 4, energy: 22, ride: true,  seat: [0, 0.030, 0.002], camY: 0.012 },
+  knirsch: { name: 'Knirsch', what: 'Gummi-Dino',    len: 0.12, h: 0.09, r: 0.02,  y0: 0.02, y1: 0.06, body: 'capsule', chapter: 3, cost: 5, energy: 30, ride: false, hp: 30 },
+};
+const TOY_IDS = ['flitz', 'schnurr', 'hoppel', 'watte', 'flatter', 'knirsch'];
+const TOYC = {   // Zahlen zum Tunen
+  carMax: 0.9, carBoost: 1.3, carRev: 0.3, carAcc: 1.8, carCoast: 1.2, carTurn: 2.4, carRam: 0.4, carRamDmg: 3,
+  mouseSpeed: 0.35, mouseRange: 2.5, mouseOrbit: 0.2, lureR: 0.5,
+  hopSpeed: 0.45, hopCharge: 0.8, hopV0: 1.2, hopV1: 3.3, hopCost: 2,
+  bearSpeed: 0.20, bearFollow: 0.15, bearReach: 0.04, bearDmg: 3, bearCd: 0.9, bearRange: 0.5, bearHitCost: 3,
+  birdSpeed: 0.6, birdTurn: 2.5, birdUp: 0.35, birdSink: 0.10, birdLand: 0.25,
+  bossHp: 30, bossSpeed: 0.12, bossBite: 25, bossBiteCd: 1.2, bossReach: 0.03, bossCharge: 0.45, bossLeash: 0.6,
+  wakeDist: 0.06, cooldown: 20, staubMax: 9, staubStart: 2,
+};
+const toyV = { h: new THREE.Vector3() };
+const toyRay = new THREE.Ray();
+const toyGroup = new THREE.Group();
+scene.add(toyGroup);
+
+// ---------- Aussehen ----------
+function makeToyMesh(id) {
+  const g = new THREE.Group();
+  const mats = [], parts = {};
+  const mat = (color, glow = null, o = {}) => { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.6, flatShading: true, ...o }); mats.push({ m, base: new THREE.Color(color), glow: glow == null ? null : new THREE.Color(glow) }); return m; };
+  const add = (parent, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o; };
+  const sph = (r, ws = 12, hs = 8) => new THREE.SphereGeometry(r, ws, hs);
+  const cyl = (r1, r2, h, n = 10) => new THREE.CylinderGeometry(r1, r2, h, n);
+  const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const HP = Math.PI / 2;
+  if (id === 'flitz') {
+    // roter Keil, vier Räder, Aufziehschlüssel am Heck
+    const red = mat(0xd8392b, null, { roughness: 0.4 }), dark = mat(0x26262c), yel = mat(0xf2c230, null, { metalness: 0.3 }), white = mat(0xf4f1ea), lamp = mat(0xfff0a0, 0xffe27a);
+    const prof = new THREE.Shape();
+    [[-0.05, 0.006], [0.05, 0.006], [0.05, 0.014], [0.012, 0.022], [-0.012, 0.034], [-0.05, 0.034]].forEach(([x, y], i) => (i ? prof.lineTo(x, y) : prof.moveTo(x, y)));
+    const bg = new THREE.ExtrudeGeometry(prof, { depth: 0.04, bevelEnabled: false }); bg.translate(0, 0, -0.02); bg.rotateY(HP);
+    add(g, bg, red);
+    add(g, box(0.008, 0.0012, 0.07), white, 0, 0.0346, 0.005);
+    parts.wheels = [];
+    for (const [x, z] of [[-0.0215, -0.032], [0.0215, -0.032], [-0.0215, 0.032], [0.0215, 0.032]]) parts.wheels.push(add(g, cyl(0.011, 0.011, 0.007, 12), dark, x, 0.011, z, 0, 0, HP));
+    for (const x of [-0.013, 0.013]) add(g, sph(0.0035, 8, 6), lamp, x, 0.0105, -0.0505);
+    parts.key = new THREE.Group(); parts.key.position.set(0, 0.026, 0.056); g.add(parts.key);
+    add(parts.key, cyl(0.0012, 0.0012, 0.008, 6), yel, 0, 0, -0.003, HP);
+    add(parts.key, box(0.016, 0.005, 0.0016), yel, 0, 0, 0.002);
+    add(parts.key, box(0.004, 0.012, 0.0016), yel, 0, 0, 0.002);
+  } else if (id === 'schnurr') {
+    // grauer Halbellipsoid mit Filzohren, Schnurschwanz und Schlüssel an der Seite
+    const grey = mat(0x9a9aa2, null, { roughness: 0.9 }), felt = mat(0xe8a0a8, null, { roughness: 1 }), dark = mat(0x26262c), eye = mat(0xfff0a0, 0xffe27a), yel = mat(0xf2c230);
+    const body = add(g, new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, HP), grey, 0, 0.004, 0); body.scale.set(0.015, 0.02, 0.03);
+    for (const s of [-1, 1]) add(g, cyl(0.008, 0.008, 0.0016, 10), felt, s * 0.0105, 0.0225, -0.011, 0.3, 0, s * 1.15);
+    add(g, sph(0.003, 8, 6), felt, 0, 0.0085, -0.0298);
+    for (const s of [-1, 1]) add(g, sph(0.002, 8, 6), eye, s * 0.006, 0.0125, -0.0248);
+    for (const s of [-1, 1]) add(g, cyl(0.006, 0.006, 0.004, 10), dark, s * 0.012, 0.006, 0.012, 0, 0, HP);
+    const tail = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.008, 0.028), new THREE.Vector3(0, 0.011, 0.04), new THREE.Vector3(0.007, 0.006, 0.048), new THREE.Vector3(0.004, 0.003, 0.056)]);
+    add(g, new THREE.TubeGeometry(tail, 12, 0.0008, 5), felt);
+    parts.key = new THREE.Group(); parts.key.position.set(0.0155, 0.016, 0.004); g.add(parts.key);
+    add(parts.key, cyl(0.0012, 0.0012, 0.006, 6), yel, 0.002, 0, 0, 0, 0, HP);
+    add(parts.key, box(0.0014, 0.012, 0.005), yel, 0.005, 0, 0);
+  } else if (id === 'hoppel') {
+    // Schaukelpferd: Holzrumpf, zwei Kufen aus Torus-Segmenten, Wollmähne
+    const wood = mat(0xb87a45, null, { roughness: 0.8 }), woodD = mat(0x8a5a30, null, { roughness: 0.8 }), wool = mat(0xe8c85a, null, { roughness: 1 }), red = mat(0xc0473d), dark = mat(0x26262c), eye = mat(0xfff0a0, 0xffe27a);
+    const R = 0.09, arc = 1.7, tube = 0.0045;
+    for (const s of [-1, 1]) {
+      const k = new THREE.Group(); k.position.set(s * 0.021, R + tube, 0); k.rotation.y = HP; g.add(k);
+      add(k, new THREE.TorusGeometry(R, tube, 6, 24, arc), woodD, 0, 0, 0, 0, 0, -HP - arc / 2);
+    }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, cyl(0.0035, 0.0035, 0.06, 6), wood, sx * 0.02, 0.04, sz * 0.027, sz * -0.12, 0, sx * -0.1);
+    add(g, box(0.04, 0.032, 0.075), wood, 0, 0.078, 0.002);
+    add(g, box(0.042, 0.006, 0.04), red, 0, 0.096, 0.004);
+    add(g, box(0.026, 0.045, 0.026), wood, 0, 0.092, -0.04, 0.5, 0, 0);
+    add(g, box(0.028, 0.028, 0.03), wood, 0, 0.106, -0.056, -0.15, 0, 0);
+    add(g, box(0.02, 0.016, 0.02), woodD, 0, 0.098, -0.076);
+    for (const s of [-1, 1]) add(g, new THREE.ConeGeometry(0.005, 0.014, 6), woodD, s * 0.01, 0.126, -0.05);
+    for (const s of [-1, 1]) add(g, sph(0.0032, 6, 5), eye, s * 0.0145, 0.11, -0.062);
+    for (let i = 0; i < 4; i++) add(g, sph(0.0075, 6, 5), wool, 0, 0.114 - i * 0.0075, -0.052 + i * 0.012);
+    add(g, sph(0.009, 7, 6), wool, 0, 0.088, 0.046);
+    // Kopf nach oben ragt über 0,12: etwas flacher halten
+  } else if (id === 'watte') {
+    // sitzender Plüschbär: Kugeln, Flicken auf dem Bauch, Knopfaugen
+    const fur = mat(0xb98a5e, null, { roughness: 1 }), cream = mat(0xe8d4a8, null, { roughness: 1 }), patch = mat(0x5f8f9e, null, { roughness: 1 }), dark = mat(0x2a211c), eye = mat(0xfff0a0, 0xffe27a);
+    const body = add(g, sph(0.032, 14, 10), fur, 0, 0.036, 0); body.scale.set(1, 1.1, 0.95);
+    add(g, cyl(0.0125, 0.0125, 0.002, 14), patch, 0, 0.034, -0.0298, HP, 0, 0);
+    add(g, sph(0.026, 14, 10), fur, 0, 0.082, -0.004);
+    for (const s of [-1, 1]) add(g, sph(0.0095, 8, 6), fur, s * 0.02, 0.104, -0.004);
+    add(g, sph(0.0125, 10, 8), cream, 0, 0.077, -0.026);
+    add(g, sph(0.004, 8, 6), dark, 0, 0.081, -0.0375);
+    for (const s of [-1, 1]) add(g, sph(0.0035, 8, 6), eye, s * 0.0105, 0.089, -0.0255);
+    parts.arms = [];
+    for (const s of [-1, 1]) { const a = add(g, sph(0.0105, 8, 6), fur, s * 0.037, 0.05, -0.006); a.scale.set(0.9, 1.7, 0.9); parts.arms.push(a); }
+    for (const s of [-1, 1]) add(g, sph(0.0135, 8, 6), fur, s * 0.02, 0.0125, -0.028);
+  } else if (id === 'flatter') {
+    // Holzvogel: Kegelrumpf, zwei Brettflügel an Gelenken, Stoffschwanz
+    const wood = mat(0xd9a566, null, { roughness: 0.7 }), woodD = mat(0xb97a3d, null, { roughness: 0.7 }), cloth = mat(0xc04a4a, null, { roughness: 1, side: THREE.DoubleSide }), beak = mat(0xf2a030), eye = mat(0xfff0a0, 0xffe27a);
+    add(g, new THREE.ConeGeometry(0.016, 0.052, 10), wood, 0, 0.02, 0.006, HP, 0, 0);
+    add(g, sph(0.0115, 10, 8), wood, 0, 0.026, -0.026);
+    add(g, new THREE.ConeGeometry(0.004, 0.012, 6), beak, 0, 0.0245, -0.0395, -HP, 0, 0);
+    for (const s of [-1, 1]) add(g, sph(0.0024, 6, 5), eye, s * 0.0075, 0.0295, -0.0325);
+    parts.wings = [];
+    for (const s of [-1, 1]) {
+      const wg = new THREE.Group(); wg.position.set(s * 0.011, 0.027, -0.004); g.add(wg);
+      add(wg, box(0.038, 0.002, 0.026), woodD, s * 0.019, 0, 0);
+      add(wg, box(0.012, 0.0024, 0.01), cloth, s * 0.035, 0, 0.004);
+      parts.wings.push(wg);
+    }
+    add(g, box(0.014, 0.0012, 0.022), cloth, 0, 0.02, 0.04);
+    add(g, box(0.0012, 0.012, 0.02), cloth, 0, 0.022, 0.04);
+  } else if (id === 'knirsch') {
+    // grüner Gummi-Dino mit Zackenkamm und Klappkiefer
+    const green = mat(0x58b858, null, { roughness: 0.35 }), dark = mat(0x3c8a3c, null, { roughness: 0.35 }), tooth = mat(0xf4f1ea), eye = mat(0xfff0a0, 0xffe27a), spike = mat(0xe0a63a, null, { roughness: 0.4 });
+    const body = add(g, sph(1, 14, 10), green, 0, 0.037, 0.008); body.scale.set(0.02, 0.026, 0.045);
+    add(g, sph(0.018, 12, 8), green, 0, 0.063, -0.04);
+    add(g, box(0.024, 0.008, 0.026), green, 0, 0.058, -0.056);
+    parts.jaw = new THREE.Group(); parts.jaw.position.set(0, 0.052, -0.038); g.add(parts.jaw);
+    add(parts.jaw, box(0.024, 0.006, 0.032), dark, 0, 0, -0.016);
+    for (let i = 0; i < 2; i++) for (const s of [-1, 1]) add(parts.jaw, new THREE.ConeGeometry(0.0018, 0.005, 5), tooth, s * 0.009, 0.005, -0.012 - i * 0.012);
+    for (let i = 0; i < 5; i++) add(g, new THREE.ConeGeometry(0.0055 - i * 0.0004, 0.014, 5), spike, 0, 0.074 - i * 0.002, -0.025 + i * 0.016);
+    parts.eyes = [];
+    for (const s of [-1, 1]) parts.eyes.push(add(g, sph(0.0045, 8, 6), eye, s * 0.01, 0.071, -0.05));
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, cyl(0.007, 0.008, 0.02, 8), dark, sx * 0.014, 0.01, sz * 0.022 + 0.005);
+    add(g, new THREE.ConeGeometry(0.012, 0.05, 8), green, 0, 0.03, 0.062, HP, 0, 0);
+  }
+  return { group: g, mats, parts };
+}
+const toyGray = new THREE.Color();
+// k = 0 schläft (grau entsättigt), 1 wach (Farben, leuchtende Teile)
+function toyTint(toy, k) {
+  const sat = 0.25 + 0.75 * k, dim = 0.9 + 0.1 * k;
+  for (const e of toy.mats) {
+    const l = Math.min(0.75, (0.3 * e.base.r + 0.59 * e.base.g + 0.11 * e.base.b) * 1.5 + 0.05);
+    toyGray.setRGB(l, l, l);
+    e.m.color.copy(toyGray).lerp(e.base, sat).multiplyScalar(dim);
+    if (e.glow) e.m.emissive.copy(e.glow).multiplyScalar(k * (toy.angry ? 0 : 1)); else e.m.emissive.setRGB(0, 0, 0);
+  }
+  toy.tint = k;
+}
+
+// ---------- Körper und Platzierung ----------
+const toyFootY = toy => toy.body.pos.y - (toy.def.body === 'sphere' ? toy.def.r : 0);
+const toySB = Array.from({ length: 3 }, () => ({ x: 0, y: 0, z: 0, r: 0 }));
+// Kollisionskugeln (1 bis 3) des Spielzeugs in Weltkoordinaten; gibt die Anzahl zurück
+function toySpheres(toy) {
+  const b = toy.body, d = toy.def, S = toySB, fx = -Math.sin(toy.yaw), fz = -Math.cos(toy.yaw);
+  let n = 0;
+  const put = (x, y, z, r) => { const s = S[n++]; s.x = x; s.y = y; s.z = z; s.r = r; };
+  if (toy.id === 'flitz') { put(b.pos.x + fx * 0.026, b.pos.y, b.pos.z + fz * 0.026, d.r); put(b.pos.x - fx * 0.026, b.pos.y, b.pos.z - fz * 0.026, d.r); }
+  else if (toy.id === 'hoppel') { put(b.pos.x, b.pos.y + d.y0, b.pos.z, d.r); put(b.pos.x, b.pos.y + d.y1, b.pos.z, d.r); }
+  else if (toy.id === 'knirsch') { for (const k of [-1, 0, 1]) put(b.pos.x + fx * 0.035 * k, b.pos.y + 0.03, b.pos.z + fz * 0.035 * k, 0.022); }
+  else put(b.pos.x, b.pos.y, b.pos.z, d.r);
+  return n;
+}
+const tfA = new THREE.Vector3(), tfB = new THREE.Vector3(), tfC = new THREE.Vector3(), tfP = new THREE.Vector3();
+// Steht das Spielzeug am Fußpunkt p frei (kein Festkörper überlappt)?
+function toyFree(bvh, id, p) {
+  const d = TOYS[id];
+  if (d.body === 'sphere') { tfP.set(p.x, p.y, p.z); return sphereFree(bvh, tfP, d.r); }
+  tfA.set(p.x, p.y + d.y0 + 0.002, p.z); tfB.set(p.x, p.y + d.y1 + 0.002, p.z);
+  resolveCapsule(bvh, tfA, tfB, d.r, tfC);
+  return tfC.length() <= 0.0005;
+}
+function makeToy(id, foot, yaw) {
+  const d = TOYS[id], sphere = d.body === 'sphere';
+  const m = makeToyMesh(id);
+  const body = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), r: d.r, y0: sphere ? 0 : d.y0, y1: sphere ? 0 : d.y1, onGround: false, canStep: false, supportY: foot.y };
+  const toy = {
+    id, kind: id, def: d, home: foot.clone(), homeYaw: yaw, yaw, chapter: d.chapter, cost: d.cost, energy: 0, maxEnergy: d.energy,
+    state: 'schlaf', body, mesh: m.group, mats: m.mats, parts: m.parts, found: false, tamed: false, cd: 0, by: null,
+    speed: 0, dir: new THREE.Vector3(0, 0, -1), wakeT: 0, tint: 0, phase: Math.random() * 6.28, hp: d.hp || 0, maxHp: d.hp || 0,
+    ridden: false, charge: 0, holding: false, landing: false, boost: false, aiT: 0, avoidT: 0, avoidAng: 0, stuckT: 0, lastX: 0, lastZ: 0,
+    atkCd: 0, pickT: 0, farT: 0, phaseName: 'walk', pt: 0, t6: 0, pending: 0, hitFlash: 0, angry: false, wobble: 0, trailT: 0, orbit: 0,
+    dist: 0, flap: 0, jaw: 0, airT: 0, landed: true, tickT: 0, stepT: 0,
+  };
+  toyHome(toy);
+  toy.mesh.rotation.order = 'YXZ';
+  toyGroup.add(toy.mesh);
+  toyTint(toy, 0);
+  toyPose(toy);
+  return toy;
+}
+function toyHome(toy) {
+  const d = toy.def, h = toy.home;
+  toy.body.pos.set(h.x, h.y + (d.body === 'sphere' ? d.r : 0) + 0.0004, h.z);
+  toy.body.vel.set(0, 0, 0); toy.body.onGround = false; toy.body.supportY = h.y;
+  toy.yaw = toy.homeYaw; toy.speed = 0; toy.charge = 0; toy.holding = false; toy.landing = false; toy.boost = false; toy.ridden = false;
+  toy.dir.set(-Math.sin(toy.yaw), 0, -Math.cos(toy.yaw));
+}
+function toyPose(toy) {
+  const m = toy.mesh;
+  m.position.set(toy.body.pos.x, toyFootY(toy), toy.body.pos.z);
+  m.rotation.y = toy.yaw;
+}
+
+// Spielzeug-Plan: Demo-Liste, Foto-Raum (Möbel-Verankerung) oder Scan (w.toyPlan)
+function toyPlanFor(w) {
+  const conv = (W, D, s, list) => list.map(p => ({ id: p.id, pos: new THREE.Vector3(...furniturePoint(p.anchor, p.pos, W, D, s)), yaw: p.yaw }));
+  if (w.kind === 'demo') return conv(ROOM0.W, ROOM0.D, 1, TOY_PLACES);
+  if (w.kind === 'foto' && w.furn) {
+    const f = w.furn;
+    return [...conv(f.W, f.D, f.s, TOY_PLACES.filter(p => p.id !== 'knirsch')), ...(w.toyPlan || []).filter(p => p.id === 'knirsch')];
+  }
+  return w.toyPlan || [];
+}
+function disposeToys() {
+  if (state.riding) dismount(state.riding, true);
+  for (const c of [...toyGroup.children]) { toyGroup.remove(c); disposeObject(c); }
+  engineStop();
+  if (state.world) { state.world.toys = []; }
+  toyHud.boss = false;
+}
+// Platziert die Spielsachen der Welt (Freiraum-Test, Mindestabstand zu Zielen) und lädt gespeicherte Werte
+function initToys(w, sv) {
+  disposeToys();
+  const bvh = w.collider.geometry.boundsTree;
+  const plan = toyPlanFor(w);
+  const saved = sv?.toys || {};
+  w.toySave = { found: Array.isArray(saved.found) ? saved.found.filter(x => TOYS[x]) : [], tamed: saved.tamed === true || saved.tamed === 'knirsch', ring: Number.isFinite(saved.ring) ? saved.ring : null, freeUsed: !!saved.freeUsed };
+  state.staub = THREE.MathUtils.clamp(Number.isFinite(saved.staub) ? saved.staub : TOYC.staubStart, 0, TOYC.staubMax);
+  w.toys = [];
+  w.toyData = { watteKills: 0, race: { idx: 0, t: 0, run: false, side: [0, 0, 0] }, spark: null, nextBoss: null };
+  const goals = (w.objectives || []).filter(o => o.pos && o.type !== 'spiel' && o.type !== 'lager').map(o => o.pos);
+  for (const p of plan) {
+    const foot = p.pos.clone();
+    const farGoal = q => goals.every(g => g.distanceTo(q) >= 0.08);
+    if (!toyFree(bvh, p.id, foot) || !farGoal(foot)) {
+      let q = null;
+      for (let t = 0; t < 12 && !q; t++) { const c = findWalkable(foot, 0.02, 0.05 + 0.02 * t, [-0.03, 0.03], P.radius); if (c && toyFree(bvh, p.id, c) && farGoal(c)) q = c; }
+      console.warn(`Spielzeug ${p.id}: Position nachgerückt`, foot.toArray(), '→', q ? q.toArray() : 'keine freie Stelle');
+      if (!q) continue;
+      foot.copy(q);
+    }
+    const toy = makeToy(p.id, foot, p.yaw);
+    toy.found = w.toySave.found.includes(p.id);
+    if (p.id === 'knirsch') { toy.tamed = w.toySave.tamed; toy.nestId = 'N3'; }
+    w.toys.push(toy);
+  }
+  // Ringrennen-Ringe
+  if (w.rings) for (const r of w.rings) { toyGroup.remove(r.mesh); }
+  w.rings = null;
+  const t2 = (w.objectives || []).find(o => o.id === 'T2');
+  if (t2 && t2.rings && !t2.done) {
+    const col = new THREE.Color(0x5fc9a8);
+    w.rings = t2.rings.map((pos, i) => {
+      const nxt = t2.rings[i + 1] || null, prv = t2.rings[i - 1] || null;
+      const dir = new THREE.Vector3();
+      if (nxt) dir.add(nxt.clone().sub(pos).setY(0).normalize());
+      if (prv) dir.add(pos.clone().sub(prv).setY(0).normalize());
+      if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
+      dir.normalize();
+      const mesh = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.0045, 8, 28), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.6, roughness: 0.4 }));
+      mesh.position.copy(pos); mesh.rotation.y = Math.atan2(dir.x, dir.z); mesh.castShadow = false;
+      toyGroup.add(mesh);
+      return { pos: pos.clone(), n: dir, mesh };
+    });
+  }
+}
+function resetToysHome() {
+  const w = state.world;
+  if (!w || !w.toys) return;
+  if (state.riding) dismount(state.riding);
+  for (const t of w.toys) {
+    if (t.state !== 'schlaf') t.state = 'schlaf';
+    t.energy = 0; t.by = null; t.wakeT = 0; t.pending = 0; t.angry = false; t.phaseName = 'walk'; t.hp = t.maxHp; t.cd = 0;
+    toyHome(t); toyPose(t); toyTint(t, 0);
+  }
+  if (w.toyData) { w.toyData.race.idx = 0; w.toyData.race.run = false; w.toyData.spark = null; }
+  for (const e of enemies) { e.lure = null; e.lureT = 0; }
+}
+
+// ---------- Funkenstaub ----------
+function addStaub(n) {
+  const before = state.staub;
+  state.staub = THREE.MathUtils.clamp(state.staub + n, 0, TOYC.staubMax);
+  if (state.staub > before) { toyHud.pulse = 0.6; }
+  toyHud.dirty = true;
+}
+
+// ---------- Wecken, Einschlafen, Reiten ----------
+const toyList = () => (state.world && state.world.toys) || [];
+const toyById = id => toyList().find(t => t.id === id);
+const playerCenterV = new THREE.Vector3();
+// Abstand der Spielerkapsel zur Oberfläche des Spielzeugs
+function toySurfaceDist(toy, p) {
+  const n = toySpheres(toy);
+  let best = Infinity;
+  const py = p.y + P.height * 0.5;
+  for (let i = 0; i < n; i++) { const s = toySB[i]; const d = Math.hypot(p.x - s.x, py - s.y, p.z - s.z) - s.r; if (d < best) best = d; }
+  return best;
+}
+function nearestSleeper() {
+  let best = null, bd = TOYC.wakeDist;
+  for (const t of toyList()) {
+    if (t.state !== 'schlaf' || t.wakeT > 0) continue;
+    const d = toySurfaceDist(t, state.pos);
+    if (d < bd) { bd = d; best = t; }
+  }
+  return best;
+}
+const gateOpen = toy => state.free || state.won || state.chapter >= toy.chapter;
+function toyAction() {
+  if (state.mode !== 'play' || state.respawnT > 0) return;
+  if (state.riding) { sleepToy(state.riding, 'f'); return; }
+  const t = nearestSleeper();
+  if (t) tryWakeToy(t);
+}
+function tryWakeToy(toy) {
+  const w = state.world, ts = w.toySave;
+  if (!gateOpen(toy)) { toast(`Schläft noch tief (Kapitel ${toy.chapter})`); sfx.nope(); return false; }
+  if (toy.id === 'knirsch' && !toy.tamed) { toast('Knirsch schläft tief', 'Nur das Fusselnest auf dem Tisch kann ihn wecken.'); sfx.nope(); return false; }
+  if (toy.cd > 0) { toast(`${toy.def.name} ist noch müde`, `Noch ${Math.ceil(toy.cd)} Sekunden`); sfx.nope(); return false; }
+  const free = toy.id === 'flitz' && !ts.freeUsed;
+  const cost = free ? 0 : toy.cost;
+  if (state.staub < cost) { toast(`Funkenstaub fehlt (${state.staub}/${cost})`); sfx.nope(); return false; }
+  state.staub -= cost; toyHud.dirty = true;
+  if (free) ts.freeUsed = true;
+  wakeToy(toy, 'spieler');
+  if (free) toast('Flitz erwacht: das erste Mal gratis', 'Danach kostet Wecken Funkenstaub. ' + (isTouch ? 'Stick: Gas und Lenken' : 'W/S Gas, A/D lenken, Shift Schub, F steigt ab'), 5);
+  saveProgress();
+  return true;
+}
+function wakeToy(toy, by = 'spieler') {
+  if (toy.state !== 'schlaf') return;
+  const w = state.world;
+  if (by === 'spieler') for (const o of w.toys) if (o !== toy && o.state === 'wach' && o.by === 'spieler') sleepToy(o, 'ersetzt');
+  toy.state = by === 'nest' ? 'boss' : 'wach';
+  toy.by = by; toy.energy = toy.maxEnergy; toy.wakeT = 0.6; toy.cd = 0; toy.pending = 0;
+  toy.speed = 0; toy.landing = false; toy.charge = 0; toy.holding = false; toy.phaseName = 'walk'; toy.t6 = 0; toy.atkCd = 0.5; toy.angry = false;
+  toy.farT = 0; toy.avoidT = 0; toy.orbit = 0;
+  if (by === 'nest') { toy.hp = toy.maxHp; }
+  if (!toy.found) { toy.found = true; if (!w.toySave.found.includes(toy.id)) w.toySave.found.push(toy.id); }
+  addPuff(new THREE.Vector3(toy.body.pos.x, toyFootY(toy) + toy.def.h * 0.5, toy.body.pos.z), 0xffd35a, 26, 0.0016, 0.09);
+  sfx.wake(toy.id);
+  const t0 = w.objectives && w.objectives.find(o => o.id === 'T0');
+  if (t0 && by !== 'nest') completeObjective(t0);
+  if (by === 'spieler' && toy.def.ride) mount(toy);
+  else if (by === 'spieler') toast(`${toy.def.name} ist wach`, toy.id === 'schnurr' ? 'Die Maus lockt Wachen von dir weg.' : 'Folgt dir und kämpft gegen Wachen.', 2.5);
+}
+function sleepToy(toy, why = '') {
+  if (toy.state === 'schlaf') return;
+  if (state.riding === toy) dismount(toy);
+  const player = toy.by === 'spieler';
+  toy.state = 'schlaf'; toy.energy = 0; toy.speed = 0; toy.landing = false; toy.angry = false; toy.phaseName = 'walk'; toy.charge = 0; toy.holding = false; toy.boost = false;
+  toy.dir.set(-Math.sin(toy.yaw), 0, -Math.cos(toy.yaw));
+  toy.cd = player ? TOYC.cooldown : 0; toy.by = null; toy.wakeT = 0;
+  for (const e of enemies) if (e.lure === toy) { e.lure = null; e.lureT = 0; }
+  addPuff(new THREE.Vector3(toy.body.pos.x, toyFootY(toy) + toy.def.h * 0.6, toy.body.pos.z), 0x9a9aa8, 10, 0.0012, 0.04);
+  if (why !== 'still') sfx.sleep();
+}
+function mount(toy) {
+  state.riding = toy; toy.ridden = true;
+  state.prevView = state.view; state.prevCamDist = state.camDist;
+  setView('tp', false);
+  state.camDist = THREE.MathUtils.clamp(2.5 * toy.def.len, 0.1, 0.6);
+  state.camLift = toy.def.camY || 0;
+  state.yaw = toy.yaw; state.pitch = -0.22;
+  releaseHook(false); resetMovers();
+  state.vel.set(0, 0, 0); state.onGround = true; state.jumpQueued = false; state.moving = false; state.sprinting = false;
+  syncRider(toy);
+  const keys = isTouch
+    ? { flitz: 'Stick: Gas und Lenken', hoppel: 'Stick laufen, Sprung halten lädt', flatter: 'Stick fliegen, Sprung halten steigt' }
+    : { flitz: 'W/S Gas, A/D lenken, Shift Schub', hoppel: 'W/S laufen, Leertaste halten lädt den Sprung', flatter: 'W vor, S schweben, Leertaste steigt' };
+  toast(`${toy.def.name} trägt dich`, `${keys[toy.id]} · ${isTouch ? 'Absteigen-Knopf' : 'F steigt ab'}`, 3.5);
+}
+// Spieler neben das Spielzeug setzen: auf begehbare Fläche, in der Luft am Ort
+function dismount(toy, silent = false) {
+  if (state.riding !== toy) return;
+  state.riding = null; toy.ridden = false;
+  setView(state.prevView || 'fp', false);
+  state.camDist = state.prevCamDist || 0.06; state.camLift = 0;
+  const foot = tfP.set(toy.body.pos.x, toyFootY(toy), toy.body.pos.z).clone();
+  let p = null;
+  if (!silent && toy.body.onGround && state.world) {
+    p = findWalkable(foot, toy.def.r + 0.01, toy.def.r + 0.06, [-0.02, 0.03], P.radius);
+    if (!p) p = findWalkable(foot, toy.def.r + 0.04, toy.def.r + 0.15, [-0.03, 0.04], P.radius);
+  }
+  state.vel.set(0, 0, 0);
+  if (p) { state.pos.copy(p); state.pos.y += 0.0006; state.onGround = false; }
+  else if (!silent) { state.onGround = false; /* Position bleibt der Sitz: der Spieler fällt, Schirm und Gleiter sind wieder frei */ }
+  state.airT = 0; state.fallSpeed = 0;
+  engineSet(false, 0, 0);
+}
+function syncRider(toy) {
+  const s = toy.def.seat, c = Math.cos(toy.yaw), sn = Math.sin(toy.yaw);
+  state.pos.set(toy.body.pos.x + s[0] * c + s[2] * sn, toyFootY(toy) + s[1], toy.body.pos.z - s[0] * sn + s[2] * c);
+}
+function toyInput() {
+  const k = keys, t = touchState.move, tm = t.lengthSq() > 0.01;
+  const clamp1 = v => Math.max(-1, Math.min(1, v));
+  const thr = clamp1((k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0) + (tm ? -t.y : 0));
+  const steer = clamp1((k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0) + (tm ? t.x : 0));
+  return { thr, steer, boost: k.has('ShiftLeft') || k.has('ShiftRight') || (tm && t.length() > 0.95), space: k.has('Space') };
+}
+// ---------- Platzierung, Bonusziele ----------
+// (x, y = Oberkante der Fläche, z) im Demo-Zimmer, je an einer Möbel-Verankerung (siehe furniturePoint)
+const TOY_PLACES = [
+  { id: 'flitz',   anchor: 'mitte', pos: [0.30, 0, -0.40],     yaw: Math.PI / 2 },   // Blick −x
+  { id: 'schnurr', anchor: 'bett',  pos: [-1.30, 0, -0.95],    yaw: 0.6 },
+  { id: 'hoppel',  anchor: 'mitte', pos: [0.80, 0, 1.35],      yaw: 0.3 },
+  { id: 'watte',   anchor: 'bett',  pos: [-1.65, 0.59, -0.70], yaw: 0.4 },   // Spec nennt z = +0,70: dort liegt keine Decke (Bettende bei z = 0,25), daher z = −0,70
+  { id: 'flatter', anchor: 'tisch', pos: [0.70, 0.75, -1.38],  yaw: 0.2 },
+  { id: 'knirsch', anchor: 'tisch', pos: [1.48, 0.75, -1.22],  yaw: 1.2 },
+];
+const RING_POS = [[-0.70, 0.03, -0.95], [-1.45, 0.03, -1.25], [-1.40, 0.03, -0.70]];
+const TOY_GOALS = [
+  { id: 'T1', chapter: 1, anchor: 'bett',  pos: [-1.50, 0, -1.00],   label: 'Fahr mit dem Auto unter das Bett' },
+  { id: 'T2', chapter: 1, anchor: 'bett',  pos: RING_POS[0],         label: 'Ringrennen mit dem Auto' },
+  { id: 'T3', chapter: 2, anchor: 'tisch', pos: [0.80, 0.47, -0.85], label: 'Spring mit dem Pferd auf den Stuhl' },
+  { id: 'T4', chapter: 2, pos: null, label: 'Lass den Bären zwei Wachen besiegen' },
+  { id: 'T5', chapter: 3, anchor: 'tisch', pos: [1.86, 2.005, 0.15], label: 'Flieg mit dem Vogel aufs Regal' },
+  { id: 'T6', chapter: 3, pos: null, label: 'Zähme den Dino' },
+];
+function toyGoalObjective(g, W, D, s) {
+  const o = { id: g.id, type: 'spiel', chapter: g.chapter, required: false, label: g.label, pos: g.pos ? new THREE.Vector3(...furniturePoint(g.anchor, g.pos, W, D, s)) : null };
+  if (g.id === 'T2') o.rings = RING_POS.map(p => new THREE.Vector3(...furniturePoint('bett', p, W, D, s)));
+  return o;
+}
+
+// Ziel eines Gegners: Lockvogel Schnurr, dann Bär (50 % je Wache), sonst null
+function toyTargetFor(e, dt) {
+  if (e.lure && e.lureT > 0 && e.lure.state === 'wach') return { kind: 'lure', toy: e.lure, pos: e.lure.body.pos };
+  e.lure = null;
+  let bear = null;
+  for (const t of toyList()) if (t.state === 'wach' && (t.id === 'watte' || t.id === 'knirsch') && Math.hypot(e.pos.x - t.body.pos.x, e.pos.z - t.body.pos.z) < 0.3 && Math.abs(e.pos.y - t.body.pos.y) < 0.15) { bear = t; break; }
+  e.bearT = (e.bearT ?? 0) - dt;
+  if (e.bearT <= 0) { e.bearT = 2; e.bearPick = Math.random() < 0.5; }
+  return bear && e.bearPick ? { kind: 'bear', toy: bear, pos: bear.body.pos } : null;
+}
+
+
+// ---------- Verhalten: Hilfen ----------
+const approachAngle = (cur, target, step) => cur + THREE.MathUtils.clamp(angDiff(target, cur), -step, step);
+const yawOf = (dx, dz) => Math.atan2(-dx, -dz);
+// Kantenprobe: Strahl abwärts 3 cm voraus; kein Boden innerhalb 4 cm → Kante
+function edgeAhead(toy, dx, dz, bvh) {
+  const b = toy.body, lead = 0.03 + toy.def.r * 0.5;
+  toyRay.origin.set(b.pos.x + dx * lead, toyFootY(toy) + 0.01, b.pos.z + dz * lead);
+  toyRay.direction.set(0, -1, 0);
+  return !bvh.raycastFirst(toyRay, THREE.DoubleSide, 0, 0.05);
+}
+const EDGE_ANGLES = [0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6];
+// Läuft zum Ziel (tx, tz) mit Geschwindigkeit sp: Kantenprobe, Ausweichen bei Festhängern, immer mit Schwerkraft
+function aiWalk(toy, tx, tz, sp, h, bvh) {
+  const b = toy.body;
+  toy.aiT -= h;
+  if (toy.avoidT > 0) toy.avoidT -= h;
+  if (toy.aiT <= 0) {
+    toy.aiT = 0.05;
+    toy.stuckT += 0.05;
+    if (toy.stuckT >= 0.5) {
+      const mv = Math.hypot(b.pos.x - toy.lastX, b.pos.z - toy.lastZ);
+      if ((toy.wantSp || 0) > 0.02 && mv < toy.wantSp * 0.5 * 0.3) { toy.avoidT = 0.7; toy.avoidAng = (Math.random() < 0.5 ? 1 : -1) * 1.3; }
+      toy.stuckT = 0; toy.lastX = b.pos.x; toy.lastZ = b.pos.z;
+    }
+    let dx = tx - b.pos.x, dz = tz - b.pos.z; const l = Math.hypot(dx, dz);
+    if (l > 1e-4) { dx /= l; dz /= l; } else { dx = toy.dir.x; dz = toy.dir.z; }
+    if (toy.avoidT > 0) { const c = Math.cos(toy.avoidAng), s = Math.sin(toy.avoidAng); const rx = dx * c - dz * s; dz = dx * s + dz * c; dx = rx; }
+    toy.safe = false;
+    if (sp > 0) for (const a of EDGE_ANGLES) {
+      const c = Math.cos(a), s = Math.sin(a), rx = dx * c - dz * s, rz = dx * s + dz * c;
+      if (!edgeAhead(toy, rx, rz, bvh)) { toy.dir.set(rx, 0, rz); toy.safe = true; break; }
+    }
+  }
+  const s = toy.safe ? sp : 0;
+  toy.wantSp = s;
+  if (s > 0) toy.yaw = approachAngle(toy.yaw, yawOf(toy.dir.x, toy.dir.z), 6 * h);
+  toyV.h.set(toy.dir.x * s * h, 0, toy.dir.z * s * h);
+  stepBody(bvh, b, toyV.h, h, P.terminal);
+  toy.speed = s;
+  toy.dist += s * h;
+}
+
+// ---------- Schaden, Tod von Gegnern, Nest ----------
+function killEnemy(e, by) {
+  state.score += e.points;
+  addPuff(e.pos, e.kind === 'fussel' ? 0xb6aebf : 0xc0473d, 30, 0.0015, 0.09);
+  sfx.pop();
+  if (Math.random() < 0.3) spawnCrumb(e.pos.clone().add(new THREE.Vector3(0, -e.r, 0)));
+  removeEnemy(e);
+  addStaub(1);
+  if (by === 'watte' || by === 'knirsch') {
+    const w = state.world, d = w.toyData;
+    if (d) { d.watteKills++; const t4 = w.objectives && w.objectives.find(o => o.id === 'T4'); if (t4 && d.watteKills >= 2) completeObjective(t4); }
+  }
+}
+function hurtEnemy(e, dmg, by, dirx = 0, dirz = 0, kb = 0.15) {
+  e.hp -= dmg; e.flash = 0.12; e.alarm = 6; sfx.hit();
+  e.vel.x += dirx * kb; e.vel.z += dirz * kb; e.vel.y += 0.25; e.onGround = false;
+  if (e.hp <= 0) killEnemy(e, by);
+}
+const bossToy = () => toyList().find(t => t.state === 'boss');
+function damageNest(nest, dmg, by = 'spieler') {
+  const boss = bossToy();
+  nest.hp -= boss ? dmg * 0.5 : dmg;
+  nest.flash = 0.12;
+  for (const e of enemies) if (e.nest === nest) e.alarm = 6;
+  if (nest.hp > 0 && nest.id === 'N3' && nest.hp <= 4) {
+    const k = toyById('knirsch');
+    if (k && k.state === 'schlaf' && !k.tamed && k.pending <= 0 && !boss) startBossWake(k, nest);
+  }
+  if (nest.hp <= 0) destroyNest(nest);
+}
+function startBossWake(toy, nest) {
+  toy.pending = 1.0;
+  toast('Das Nest weckt den Dino!', '', 2.5);
+  state.world.toyData.spark = { t: 0, from: nest.pos.clone().add(new THREE.Vector3(0, 0.012, 0)), toy };
+  sfx.roar(0.6);
+}
+// Spieler trifft den Boss (Trefferbox aus den Kollisionskugeln)
+function damageBoss(toy, dmg) {
+  toy.hp -= dmg; toy.hitFlash = 0.12; sfx.hit();
+  if (toy.hp <= 0) defeatBoss(toy, 'besiegt');
+}
+function defeatBoss(toy, why) {
+  if (toy.state !== 'boss') return;
+  sleepToy(toy, 'still');
+  toy.tamed = true; toy.cd = 0;
+  const w = state.world; w.toySave.tamed = true;
+  addStaub(3);
+  const t6 = w.objectives && w.objectives.find(o => o.id === 'T6');
+  if (t6) completeObjective(t6);
+  toast(why === 'besiegt' ? 'Knirsch besiegt und gezähmt' : 'Knirsch schläft ein', 'Für 5 Funkenstaub kannst du ihn als Begleiter wecken.', 4);
+  saveProgress();
+}
+function damagePlayer(dmg) {
+  if (state.respawnT > 0) return;
+  state.hp -= dmg * (state.riding ? 0.5 : 1); state.hurtFlash = 0.8; sfx.hurt();
+  if (state.hp <= 0) die();
+}
+// Wird von destroyNest aufgerufen
+function toysOnNestDestroyed(o) {
+  const b = bossToy();
+  if (b && o.id === b.nestId) defeatBoss(b, 'nest');
+}
+
+// ---------- Ein Physikschritt aller Spielsachen (240 Hz) ----------
+let toyClock = 0;
+function stepToysPhysics(h) {
+  const w = state.world;
+  if (!w || !w.toys || !w.toys.length) return;
+  const bvh = w.collider.geometry.boundsTree;
+  toyClock += h;
+  const dead = state.respawnT > 0;
+  const inp = state.riding ? toyInput() : null;
+  const d = w.toyData;
+  for (const toy of w.toys) {
+    toy.cd = Math.max(0, toy.cd - h);
+    toy.hitFlash = Math.max(0, toy.hitFlash - h);
+    if (toy.wakeT > 0) toy.wakeT -= h;
+    if (toy.pending > 0) { toy.pending -= h; if (toy.pending <= 0 && toy.state === 'schlaf' && !dead) wakeToy(toy, 'nest'); }
+    if (toy.state === 'schlaf') {
+      if (!toy.body.onGround) { toyV.h.set(0, 0, 0); stepBody(bvh, toy.body, toyV.h, h, P.terminal); }
+      toy.speed = 0;
+    } else if (!dead) {
+      switch (toy.id) {
+        case 'flitz': stepFlitz(toy, h, bvh, inp); break;
+        case 'hoppel': stepHoppel(toy, h, bvh, inp); break;
+        case 'flatter': stepFlatter(toy, h, bvh, inp); break;
+        case 'schnurr': stepMouse(toy, h, bvh); break;
+        case 'watte': stepCompanion(toy, h, bvh); break;
+        case 'knirsch': if (toy.state === 'boss') stepBoss(toy, h, bvh); else stepCompanion(toy, h, bvh); break;
+      }
+      if (toy.state === 'wach' && !(toy.landing)) {
+        toy.energy -= h * (toy.boost ? 2 : 1);
+        if (toy.energy <= 0) outOfEnergy(toy);
+      }
+    }
+    if (toy.body.pos.y < w.bounds.min.y - 0.4) { sleepToy(toy, 'still'); toyHome(toy); }
+  }
+  if (state.riding && !dead) syncRider(state.riding);
+  pushPlayerFromToys(bvh);
+  if (!dead) stepToyGoals(h);
+}
+function outOfEnergy(toy) {
+  if (toy.id === 'flatter' && toy.ridden && !toy.body.onGround) { toy.landing = true; toy.energy = 0; toast('Feder leer', 'Flatter sinkt zum Boden.', 2.5); sfx.sleep(); return; }
+  toast(`${toy.def.name}: Feder abgelaufen`, '', 1.8);
+  sleepToy(toy, 'feder');
+}
+function pushPlayerFromToys(bvh) {
+  if (state.riding || state.respawnT > 0) return;
+  const p = state.pos;
+  for (const t of toyList()) {
+    const n = toySpheres(t);
+    for (let i = 0; i < n; i++) {
+      const s = toySB[i];
+      const py = Math.min(p.y + P.height - P.radius, Math.max(p.y + P.radius, s.y)), dy = py - s.y, R = s.r + P.radius;
+      if (Math.abs(dy) >= R) continue;
+      const hr = Math.sqrt(R * R - dy * dy);
+      let dx = p.x - s.x, dz = p.z - s.z; const hl = Math.hypot(dx, dz);
+      if (hl >= hr) continue;
+      if (hl < 1e-6) { dx = -Math.sin(t.yaw + 1.57); dz = -Math.cos(t.yaw + 1.57); } else { dx /= hl; dz /= hl; }
+      toyV.h.set(dx * (hr - hl), 0, dz * (hr - hl));
+      moveBody(bvh, playerBody, toyV.h, moveAux);
+    }
+  }
+}
+
+// ---------- Flitz (Auto) ----------
+const noseHit = (toy, bvh, dx, dz, yUp) => {
+  toyRay.origin.set(toy.body.pos.x, toyFootY(toy) + yUp, toy.body.pos.z);
+  toyRay.direction.set(dx, 0, dz);
+  const hit = bvh.raycastFirst(toyRay, THREE.DoubleSide, 0, toy.def.len / 2 + 0.005);
+  return hit && Math.abs(hit.face.normal.y) < 0.5;
+};
+function stepFlitz(toy, h, bvh, inp) {
+  const b = toy.body;
+  const ride = toy.ridden && toy.wakeT <= 0 && inp;
+  const thr = ride ? inp.thr : 0, steer = ride ? inp.steer : 0;
+  toy.boost = !!(ride && inp.boost && thr > 0);
+  const vmax = toy.boost ? TOYC.carBoost : TOYC.carMax;
+  let sp = toy.speed;
+  if (thr > 0) sp = sp > vmax ? Math.max(vmax, sp - TOYC.carCoast * h) : Math.min(vmax, sp + TOYC.carAcc * h);
+  else if (thr < 0) sp = Math.max(-TOYC.carRev, sp - TOYC.carAcc * (sp > 0 ? 1.5 : 1) * h);
+  else sp -= Math.sign(sp) * Math.min(Math.abs(sp), TOYC.carCoast * h);
+  if (steer) {
+    const dy = -steer * TOYC.carTurn * THREE.MathUtils.clamp(sp / TOYC.carMax, -1, 1) * h;
+    toy.yaw += dy; state.yaw += dy * 0.7;
+  }
+  const fx = -Math.sin(toy.yaw), fz = -Math.cos(toy.yaw);
+  // Nasenstrahl: Wand, Bettbein oder Stufe über 1 cm stoppt die Fahrt in Fahrtrichtung
+  if (Math.abs(sp) > 0.005) {
+    const sg = Math.sign(sp);
+    if (noseHit(toy, bvh, fx * sg, fz * sg, toy.def.r) || noseHit(toy, bvh, fx * sg, fz * sg, 0.011)) sp = 0;
+  }
+  toy.speed = sp;
+  toyV.h.set((fx * sp + b.vel.x) * h, 0, (fz * sp + b.vel.z) * h);
+  const x0 = b.pos.x, z0 = b.pos.z;
+  stepBody(bvh, b, toyV.h, h, P.terminal);
+  // Kontaktauflösung an Kanten kann einen Schritt kurz beschleunigen: das Tempo bleibt hart unter dem Limit
+  const mdx = b.pos.x - x0, mdz = b.pos.z - z0, ml = Math.hypot(mdx, mdz), cap = Math.max(vmax, Math.abs(sp)) * h;
+  if (ml > cap) { b.pos.x = x0 + mdx * cap / ml; b.pos.z = z0 + mdz * cap / ml; }
+  toy.dist += sp * h;
+  // Rammen: ab 0,4 m/s 3 Schaden und Rückstoß
+  if (Math.abs(sp) >= TOYC.carRam) {
+    const n = toySpheres(toy);
+    for (const e of enemies) {
+      if (e.spawnT > 0 || toyClock - (e.ramAt ?? -9) < 0.5) continue;
+      for (let i = 0; i < n; i++) {
+        const s = toySB[i];
+        if (Math.hypot(e.pos.x - s.x, e.pos.z - s.z) <= s.r + e.r && Math.abs(e.pos.y - s.y) < s.r + e.r) {
+          e.ramAt = toyClock;
+          hurtEnemy(e, TOYC.carRamDmg, 'flitz', fx * Math.sign(sp), fz * Math.sign(sp), 0.5);
+          break;
+        }
+      }
+    }
+  }
+}
+
+// ---------- Hoppel (Schaukelpferd) ----------
+function stepHoppel(toy, h, bvh, inp) {
+  const b = toy.body;
+  const ride = toy.ridden && toy.wakeT <= 0 && inp;
+  if (ride) toy.yaw = approachAngle(toy.yaw, state.yaw, 5 * h);
+  const mv = ride ? inp.thr : 0;
+  const fx = -Math.sin(toy.yaw), fz = -Math.cos(toy.yaw);
+  toy.speed = mv * TOYC.hopSpeed;
+  if (ride) {
+    if (inp.space) { if (b.onGround) { toy.holding = true; toy.charge = Math.min(TOYC.hopCharge, toy.charge + h); } }
+    else if (toy.holding) {
+      toy.holding = false;
+      if (b.onGround) {
+        const k = toy.charge / TOYC.hopCharge;
+        b.vel.y = TOYC.hopV0 + (TOYC.hopV1 - TOYC.hopV0) * k; b.onGround = false;
+        toy.energy -= TOYC.hopCost; toy.landed = false; toy.airT = 0;
+        sfx.hop(k);
+      }
+      toy.charge = 0;
+    }
+  } else { toy.holding = false; toy.charge = 0; }
+  toyV.h.set((fx * toy.speed + b.vel.x) * h, 0, (fz * toy.speed + b.vel.z) * h);
+  const was = b.onGround, vy = b.vel.y;
+  stepBody(bvh, b, toyV.h, h, P.terminal);
+  if (!was && b.onGround && vy < -0.6) { addPuff(new THREE.Vector3(b.pos.x, b.pos.y + 0.002, b.pos.z), 0xd8cfc0, 16, 0.0016, 0.07); sfx.land(); toy.landed = true; }
+  if (!b.onGround) toy.airT += h;
+  toy.dist += Math.abs(toy.speed) * h;
+}
+
+// ---------- Flatter (Holzvogel) ----------
+function stepFlatter(toy, h, bvh, inp) {
+  const b = toy.body, w = state.world;
+  const ride = toy.ridden && toy.wakeT <= 0 && inp;
+  if (ride && !toy.landing) toy.yaw = approachAngle(toy.yaw, state.yaw, TOYC.birdTurn * h);
+  let vy = -TOYC.birdSink, fw = 0;
+  if (toy.landing) { vy = -TOYC.birdLand; }
+  else if (ride) {
+    fw = inp.thr > 0 ? TOYC.birdSpeed : 0;
+    vy = inp.space ? TOYC.birdUp : (inp.thr < 0 ? 0 : -TOYC.birdSink);
+  } else vy = -TOYC.birdLand;
+  const foot = toyV.h.set(b.pos.x, toyFootY(toy) + 0.02, b.pos.z);
+  vy += updraftLift(foot);
+  const fx = -Math.sin(toy.yaw), fz = -Math.cos(toy.yaw);
+  toy.speed = fw;
+  const dy = vy * h;
+  moveBody(bvh, b, tfA.set(fx * fw * h, dy, fz * fw * h), moveAux);
+  const cap = (w.inner ? w.inner.max.y : 3) - 0.05;
+  if (b.pos.y > cap) b.pos.y = cap;
+  b.onGround = moveAux.hit && moveAux.gy > GROUND_NY && dy <= 0;
+  b.vel.set(0, 0, 0);
+  toy.vy = vy;
+  if (toy.landing && b.onGround) { toy.landing = false; toast('Sicher gelandet', '', 1.5); sleepToy(toy, 'feder'); }
+}
+
+// ---------- Schnurr (Aufziehmaus) ----------
+function stepMouse(toy, h, bvh) {
+  const b = toy.body, w = state.world;
+  if (toy.wakeT > 0) { aiWalk(toy, b.pos.x, b.pos.z, 0, h, bvh); return; }
+  const fy = toyFootY(toy);
+  // Wachen im Umkreis 0,5 m verfolgen die Maus statt des Spielers
+  for (const e of enemies) {
+    if (e.spawnT > 0) continue;
+    if (Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) <= TOYC.lureR && Math.abs(e.pos.y - b.pos.y) < 0.2) { e.lure = toy; e.lureT = 0.4; }
+  }
+  // Ziel: nächstes lebendes Nest innerhalb 2,5 m (gleiche Höhe ±0,15), sonst nächstes offenes Boden-Ziel
+  toy.pickT -= h;
+  if (toy.pickT <= 0) {
+    toy.pickT = 0.2; toy.tgt = null;
+    let best = TOYC.mouseRange;
+    for (const o of w.objectives || []) {
+      if (o.type !== 'nest' || o.done || Math.abs(o.pos.y - fy) > 0.15) continue;
+      const dd = Math.hypot(o.pos.x - b.pos.x, o.pos.z - b.pos.z);
+      if (dd < best) { best = dd; toy.tgt = { o, nest: true }; }
+    }
+    if (!toy.tgt) {
+      best = 1e9;
+      for (const o of w.objectives || []) {
+        if (o.done || !o.required || !o.pos || (o.type !== 'splitter' && o.type !== 'fund' && o.type !== 'werkzeug') || Math.abs(o.pos.y - fy) > 0.15) continue;
+        const dd = Math.hypot(o.pos.x - b.pos.x, o.pos.z - b.pos.z);
+        if (dd < best) { best = dd; toy.tgt = { o, nest: false }; }
+      }
+    }
+  }
+  let tx = b.pos.x, tz = b.pos.z, sp = TOYC.mouseSpeed;
+  const g = toy.tgt;
+  if (g && !g.o.done) {
+    const dd = Math.hypot(g.o.pos.x - b.pos.x, g.o.pos.z - b.pos.z);
+    if (g.nest && dd < TOYC.mouseOrbit * 1.6) {
+      const a = Math.atan2(b.pos.z - g.o.pos.z, b.pos.x - g.o.pos.x) + 0.6;
+      tx = g.o.pos.x + Math.cos(a) * TOYC.mouseOrbit; tz = g.o.pos.z + Math.sin(a) * TOYC.mouseOrbit;
+    } else if (!g.nest && dd < 0.03) { sp = 0; }
+    else { tx = g.o.pos.x; tz = g.o.pos.z; }
+  } else { toy.orbit += (Math.random() - 0.5) * 2 * h; tx = b.pos.x - Math.sin(toy.orbit) * 0.5; tz = b.pos.z - Math.cos(toy.orbit) * 0.5; sp = TOYC.mouseSpeed * 0.5; }
+  aiWalk(toy, tx, tz, sp, h, bvh);
+  // Funkenspur
+  if (!(g && g.nest) && toy.speed > 0.05) { toy.trailT -= h; if (toy.trailT <= 0) { toy.trailT = 0.12; addPuff(new THREE.Vector3(b.pos.x, fy + 0.004, b.pos.z), 0xffd35a, 3, 0.0014, 0.015); } }
+}
+
+// ---------- Begleiter: Watte und gezähmter Knirsch ----------
+function companionTarget(toy) {
+  const b = toy.body, fy = toyFootY(toy);
+  let best = null, bd = TOYC.bearRange;
+  for (const e of enemies) {
+    if (e.spawnT > 0 || Math.abs(e.pos.y - e.r - fy) > 0.15) continue;
+    const d = Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z);
+    if (d < bd) { bd = d; best = { kind: 'enemy', e }; }
+  }
+  if (!best) for (const o of state.world.objectives || []) {
+    if (o.type !== 'nest' || o.done || Math.abs(o.pos.y - fy) > 0.15) continue;
+    const d = Math.hypot(o.pos.x - b.pos.x, o.pos.z - b.pos.z);
+    if (d < bd) { bd = d; best = { kind: 'nest', o }; }
+  }
+  return best;
+}
+function stepCompanion(toy, h, bvh) {
+  const b = toy.body, bear = toy.id === 'watte';
+  const cfg = bear ? { sp: TOYC.bearSpeed, dmg: TOYC.bearDmg, cd: TOYC.bearCd } : { sp: 0.15, dmg: 5, cd: 1.0 };
+  toy.atkCd = Math.max(0, toy.atkCd - h);
+  if (toy.wakeT > 0) { aiWalk(toy, b.pos.x, b.pos.z, 0, h, bvh); return; }
+  const fy = toyFootY(toy);
+  const dp = Math.hypot(state.pos.x - b.pos.x, state.pos.z - b.pos.z), dyp = Math.abs(state.pos.y - fy);
+  // zu weit weg oder anderes Stockwerk: nach 3 s schläft er ein
+  if (dp > 1.2 || dyp > 0.3) { toy.farT += h; if (toy.farT > 3) { toast(`${toy.def.name} schläft ein`, 'Du bist zu weit weg.', 1.8); sleepToy(toy, 'fern'); return; } } else toy.farT = 0;
+  toy.pickT -= h;
+  if (toy.pickT <= 0) { toy.pickT = 0.1; toy.target = companionTarget(toy); }
+  let tg = toy.target;
+  if (tg && ((tg.kind === 'enemy' && !enemies.includes(tg.e)) || (tg.kind === 'nest' && tg.o.done))) tg = toy.target = null;
+  if (tg) {
+    const tp = tg.kind === 'enemy' ? tg.e.pos : tg.o.pos, tr = tg.kind === 'enemy' ? tg.e.r : 0.012;
+    const dx = tp.x - b.pos.x, dz = tp.z - b.pos.z, d = Math.hypot(dx, dz), gap = d - b.r - tr;
+    if (gap > TOYC.bearReach * 0.5) aiWalk(toy, tp.x, tp.z, cfg.sp, h, bvh);
+    else { aiWalk(toy, tp.x, tp.z, 0, h, bvh); toy.yaw = approachAngle(toy.yaw, yawOf(dx, dz), 8 * h); }
+    if (gap <= TOYC.bearReach && toy.atkCd <= 0) {
+      toy.atkCd = cfg.cd; toy.swing = 0.25;
+      if (tg.kind === 'enemy') hurtEnemy(tg.e, cfg.dmg, toy.id, dx / (d || 1), dz / (d || 1), 0.12);
+      else { damageNest(tg.o, 1, toy.id); sfx.hit(); }
+    }
+  } else {
+    const want = toy.following ? TOYC.bearFollow : TOYC.bearFollow + 0.04;
+    toy.following = dp > want;
+    aiWalk(toy, state.pos.x, state.pos.z, toy.following ? cfg.sp : 0, h, bvh);
+  }
+}
+
+// ---------- Knirsch als Boss ----------
+function stepBoss(toy, h, bvh) {
+  const b = toy.body, w = state.world;
+  const nest = (w.objectives || []).find(o => o.id === toy.nestId);
+  const nx = nest ? nest.pos.x : toy.home.x, nz = nest ? nest.pos.z : toy.home.z;
+  toy.atkCd = Math.max(0, toy.atkCd - h);
+  if (toy.wakeT > 0) { aiWalk(toy, b.pos.x, b.pos.z, 0, h, bvh); return; }
+  toy.t6 += h;
+  const fy = toyFootY(toy);
+  const dxp = state.pos.x - b.pos.x, dzp = state.pos.z - b.pos.z, dp = Math.hypot(dxp, dzp), dyp = state.pos.y - fy;
+  const sees = state.respawnT <= 0 && dp < 1.0 && Math.abs(dyp) < 0.2;
+  const dn = Math.hypot(b.pos.x - nx, b.pos.z - nz);
+  // Biss
+  if (toy.phaseName !== 'tele' && sees && dp - b.r - P.radius <= TOYC.bossReach && Math.abs(dyp) < 0.04 && toy.atkCd <= 0) {
+    toy.atkCd = TOYC.bossBiteCd; toy.jaw = 1;
+    damagePlayer(TOYC.bossBite); sfx.bite();
+  }
+  if (toy.phaseName === 'tele') {
+    toy.pt -= h; toy.angry = true;
+    toy.yaw = approachAngle(toy.yaw, yawOf(dxp, dzp), 6 * h);
+    aiWalk(toy, b.pos.x, b.pos.z, 0, h, bvh);
+    if (toy.pt <= 0) { toy.phaseName = 'charge'; toy.pt = 0.5; toy.dir.set(dxp, 0, dzp).normalize(); sfx.roar(1); }
+    return;
+  }
+  if (toy.phaseName === 'charge') {
+    toy.pt -= h;
+    let sp = TOYC.bossCharge;
+    if (edgeAhead(toy, toy.dir.x, toy.dir.z, bvh) || dn > TOYC.bossLeash + 0.05) sp = 0;
+    toyV.h.set(toy.dir.x * sp * h, 0, toy.dir.z * sp * h);
+    stepBody(bvh, b, toyV.h, h, P.terminal);
+    toy.speed = sp;
+    if (toy.pt <= 0 || sp === 0) { toy.phaseName = 'walk'; toy.angry = false; toy.t6 = 0; }
+    return;
+  }
+  toy.angry = false;
+  const leash = dn > TOYC.bossLeash - 0.05;
+  if (toy.t6 >= 6 && sees && dp < 0.8 && !leash) { toy.phaseName = 'tele'; toy.pt = 0.6; sfx.roar(0.5); return; }
+  let tx = nx, tz = nz, sp = TOYC.bossSpeed;
+  if (sees && !leash) { tx = state.pos.x; tz = state.pos.z; if (dp < 0.04) sp = 0.03; }
+  else if (dn > 0.25) { sp = TOYC.bossSpeed * 0.8; }
+  else { toy.orbit += 0.5 * h; tx = nx + Math.cos(toy.orbit) * 0.3; tz = nz + Math.sin(toy.orbit) * 0.3; sp = TOYC.bossSpeed * 0.6; }
+  aiWalk(toy, tx, tz, sp, h, bvh);
+}
+
+// ---------- Bonusziele T1 bis T5 ----------
+function stepToyGoals(h) {
+  const w = state.world, objs = w.objectives, r = state.riding;
+  if (!objs || !r) return;
+  const get = id => { for (const o of objs) if (o.id === id) return o.done ? null : o; return null; };
+  const b = r.body;
+  if (r.id === 'flitz' && r.wakeT <= 0) {
+    const t1 = get('T1');
+    if (t1 && Math.hypot(b.pos.x - t1.pos.x, b.pos.z - t1.pos.z) <= 0.15 && Math.abs(toyFootY(r) - t1.pos.y) < 0.1) completeObjective(t1);
+    const t2 = get('T2');
+    if (t2 && w.rings) {
+      const race = w.toyData.race, now = toyClock;
+      if (race.run && now - race.t > 20) { race.run = false; race.idx = 0; toast('Ringrennen: Zeit abgelaufen', 'Fahr wieder durch Ring 1.', 2); }
+      w.rings.forEach((ring, i) => {
+        const dx = b.pos.x - ring.pos.x, dz = b.pos.z - ring.pos.z, side = dx * ring.n.x + dz * ring.n.z;
+        const prev = race.side[i]; race.side[i] = side;
+        if (prev * side >= 0 || prev === 0) return;
+        const lat = Math.abs(-dx * ring.n.z + dz * ring.n.x);
+        if (lat > 0.05 || Math.abs(b.pos.y - ring.pos.y) > 0.05) return;
+        if (i === 0) { race.idx = 1; race.run = true; race.t = now; sfx.ring(0); toast('Ringrennen: los!', '3 Ringe in 20 Sekunden', 1.5); }
+        else if (race.run && i === race.idx) {
+          race.idx++; sfx.ring(i);
+          if (race.idx >= w.rings.length) {
+            const tt = now - race.t; race.run = false; race.idx = 0;
+            const ts = w.toySave; if (ts.ring == null || tt < ts.ring) ts.ring = Math.round(tt * 100) / 100;
+            toast(`Ringrennen geschafft: ${fmt(tt, 1)} s`, `Bestzeit ${fmt(ts.ring, 1)} s`, 3);
+            completeObjective(t2);
+            for (const rg of w.rings) rg.mesh.visible = false;
+          }
+        }
+      });
+    }
+  }
+  if (r.id === 'hoppel' && r.wakeT <= 0 && r.body.onGround) {
+    const t3 = get('T3');
+    if (t3 && toyFootY(r) >= t3.pos.y - 0.005 && Math.hypot(b.pos.x - t3.pos.x, b.pos.z - t3.pos.z) <= 0.25) completeObjective(t3);
+  }
+  if (r.id === 'flatter' && r.wakeT <= 0) {
+    const t5 = get('T5');
+    if (t5 && Math.hypot(b.pos.x - t5.pos.x, toyFootY(r) - t5.pos.y, b.pos.z - t5.pos.z) <= 0.2) completeObjective(t5);
+  }
+}
+
+// ---------- Klänge ----------
+const engine = { o: null, g: null };
+function engineSet(on, f = 0, vol = 0) {
+  const a = audio(); if (!a) return;
+  try {
+    if (on && !engine.o) {
+      engine.o = a.createOscillator(); engine.g = a.createGain();
+      engine.o.type = 'sawtooth'; engine.g.gain.value = 0;
+      engine.o.connect(engine.g); engine.g.connect(a.destination); engine.o.start();
+    }
+    if (!engine.o) return;
+    const t = a.currentTime;
+    if (on) { engine.o.frequency.setTargetAtTime(f, t, 0.05); engine.g.gain.setTargetAtTime(vol, t, 0.05); }
+    else { engine.g.gain.setTargetAtTime(0, t, 0.03); const o = engine.o; engine.o = null; setTimeout(() => { try { o.stop(); } catch { /* egal */ } }, 250); }
+  } catch { engine.o = null; }
+}
+const engineStop = () => engineSet(false);
+Object.assign(sfx, {
+  wake: () => { for (let i = 0; i < 5; i++) setTimeout(() => blip('square', 300 + i * 60, 420 + i * 70, 0.05, 0.05), i * 55); setTimeout(() => blip('triangle', 520, 1040, 0.25, 0.1), 300); },
+  sleep: () => blip('sine', 500, 160, 0.4, 0.08),
+  nope: () => blip('square', 180, 110, 0.16, 0.08),
+  tick: () => blip('square', 1800, 1500, 0.02, 0.035),
+  hop: k => blip('sine', 180, 260 + 300 * k, 0.16, 0.1),
+  land: () => blip('', 240, 0, 0.1, 0.09, true),
+  roar: k => blip('sawtooth', 150 * (1 + 0.3 * k), 55, 0.3 + 0.4 * k, 0.12),
+  bite: () => { blip('square', 220, 90, 0.12, 0.1); blip('', 900, 0, 0.08, 0.08, true); },
+  ring: i => blip('triangle', 600 + i * 200, 900 + i * 260, 0.2, 0.1),
+  flap: () => blip('', 700, 0, 0.05, 0.03, true),
+});
+
+// ---------- Anzeige: Animation, Hinweis, Feder-Balken, Boss-Balken ----------
+const toyHud = { dirty: true, pulse: 0, boss: false, prompt: null, promptTxt: '', btn: '', staub: '', energyName: '', energyPct: -1, low: false, bossPct: -1, saveT: 0, pins: new Map() };
+let toyAnim = 0;
+function animateToy(toy, dt) {
+  const k = toy.state === 'schlaf' ? 0 : 1;
+  toy.tint += THREE.MathUtils.clamp(k - toy.tint, -dt / 0.6, dt / 0.6);
+  toyTint(toy, toy.tint);
+  toyPose(toy);
+  const m = toy.mesh, p = toy.parts, t = toyAnim + toy.phase, asleep = toy.state === 'schlaf';
+  const moved = toy.dist - (toy.prevDist || 0); toy.prevDist = toy.dist;
+  m.rotation.x = 0; m.rotation.z = 0; m.scale.set(1, 1, 1);
+  if (toy.wakeT > 0) { m.rotation.z = Math.sin(t * 70) * 0.05; }
+  if (asleep) {
+    const br = 1 + 0.02 * Math.sin(t * 1.3);
+    m.scale.set(1 + (br - 1) * 0.5, br, 1 + (br - 1) * 0.5);
+    return;
+  }
+  const mov = toy.speed !== 0;
+  const wind = (toy.energy / toy.maxEnergy);
+  if (toy.id === 'flitz') {
+    for (const w of p.wheels) w.rotation.x -= moved / 0.011;
+    p.key.rotation.z += dt * (toy.wakeT > 0 ? 18 : 2 + 5 * wind);
+    if (mov) m.position.y += Math.sin(t * 40) * 0.0002;
+  } else if (toy.id === 'schnurr') {
+    p.key.rotation.x += dt * (toy.wakeT > 0 ? 18 : 3 + 8 * wind);
+    if (mov) m.rotation.z = Math.sin(toy.dist * 160) * 0.08;
+  } else if (toy.id === 'hoppel') {
+    const air = !toy.body.onGround;
+    m.rotation.x = air ? THREE.MathUtils.clamp(-toy.body.vel.y * 0.05, -0.25, 0.25) : Math.sin(toy.dist * 45) * 0.12 * (mov ? 1 : 0) + Math.sin(t * 2) * 0.01;
+    if (toy.charge > 0) { const c = toy.charge / TOYC.hopCharge; m.scale.y = 1 - 0.16 * c; m.rotation.x = 0.2 * c; }
+  } else if (toy.id === 'watte') {
+    if (mov) m.rotation.z = Math.sin(toy.dist * 55) * 0.07;
+    toy.swing = Math.max(0, (toy.swing || 0) - dt);
+    const sw = toy.swing > 0 ? Math.sin((0.25 - toy.swing) / 0.25 * Math.PI) * 1.6 : 0;
+    p.arms[0].rotation.x = -sw; p.arms[1].rotation.x = -sw;
+  } else if (toy.id === 'flatter') {
+    const air = !toy.body.onGround;
+    toy.flap += dt * (air ? (toy.vy > 0.1 ? 22 : 12) : 3);
+    const f = air ? Math.sin(toy.flap) * 0.6 + 0.1 : 0.15;
+    p.wings[0].rotation.z = -f; p.wings[1].rotation.z = f;
+    m.rotation.x = air ? THREE.MathUtils.clamp(-(toy.vy || 0) * 0.9, -0.5, 0.5) : 0;
+    if (air && Math.sin(toy.flap) > 0.97 && toy.ridden) sfx.flap();
+  } else if (toy.id === 'knirsch') {
+    toy.jaw = Math.max(0, toy.jaw - dt * 4);
+    let ja = 0.05 + toy.jaw * 0.5;
+    if (toy.phaseName === 'tele') ja = 0.3 + Math.sin(t * 45) * 0.28;
+    p.jaw.rotation.x = ja;
+    if (mov) m.rotation.z = Math.sin(toy.dist * 60) * 0.06;
+    if (toy.angry) { const em = p.eyes[0].material; em.emissive.setHex(0xff2a2a); em.color.setHex(0xff3030); }
+  }
+  if (toy.hitFlash > 0) for (const e of toy.mats) e.m.emissive.setRGB(0.7, 0.3, 0.2);
+}
+// Zielpfeil-Marken für gefundene Spielsachen (Tab)
+function toyPins() {
+  const out = [];
+  for (const t of toyList()) {
+    if (!t.found) continue;
+    let pin = toyHud.pins.get(t);
+    if (!pin) { pin = { id: 'toy:' + t.id, type: 'toy', pos: new THREE.Vector3(), required: false, chapter: 0, label: t.def.name }; toyHud.pins.set(t, pin); }
+    pin.pos.set(t.body.pos.x, toyFootY(t), t.body.pos.z);
+    out.push(pin);
+  }
+  return out;
+}
+function toyPromptInfo() {
+  if (state.mode !== 'play' || state.respawnT > 0) return null;
+  if (state.riding) return { text: 'F: absteigen', btn: 'Absteigen' };
+  const t = nearestSleeper();
+  if (!t) return null;
+  const d = t.def, ts = state.world.toySave;
+  if (!gateOpen(t)) return { text: `${d.name} schläft noch tief (Kapitel ${t.chapter})`, btn: null };
+  if (t.id === 'knirsch' && !t.tamed) return { text: 'Knirsch schläft tief', btn: null };
+  if (t.cd > 0) return { text: `${d.name} ist noch müde (${Math.ceil(t.cd)} s)`, btn: null };
+  const free = t.id === 'flitz' && !ts.freeUsed;
+  return { text: `${isTouch ? '' : 'F: '}${d.name} wecken (${free ? 'gratis' : t.cost + ' Funkenstaub'})`, btn: 'Wecken' };
+}
+let sparkPts = null;
+// einmal pro Bild: Animation, Fund-Erkennung, Ringe, Funkenbahn, Klänge, Speichern
+function updateToys(dt) {
+  const w = state.world;
+  if (!w || !w.toys) return;
+  toyAnim += dt;
+  for (const toy of w.toys) {
+    animateToy(toy, dt);
+    if (!toy.found && Math.hypot(state.pos.x - toy.body.pos.x, state.pos.z - toy.body.pos.z) < 0.4 && Math.abs(state.pos.y - toyFootY(toy)) < 0.3) {
+      toy.found = true; if (!w.toySave.found.includes(toy.id)) w.toySave.found.push(toy.id); toyHud.saveT = 1;
+    }
+    if (toy.state === 'wach' && toy.energy > 0 && toy.energy < 5) { toy.tickT -= dt; if (toy.tickT <= 0) { toy.tickT = 0.5; sfx.tick(); } }
+  }
+  const r = state.riding;
+  if (r && r.id === 'flitz') engineSet(true, 55 + Math.abs(r.speed) * 130, 0.025 + 0.02 * Math.abs(r.speed)); else if (engine.o) engineSet(false);
+  if (w.rings) w.rings.forEach((rg, i) => {
+    const next = w.toyData.race.run ? w.toyData.race.idx === i : i === 0;
+    rg.mesh.material.emissiveIntensity = (next ? 1.3 : 0.35) + 0.25 * Math.sin(toyAnim * 5 + i);
+    rg.mesh.material.color.setHex(next ? 0xffd35a : 0x5fc9a8); rg.mesh.material.emissive.setHex(next ? 0xffb020 : 0x5fc9a8);
+  });
+  // Funkenbahn vom Nest zum Dino
+  const sp = w.toyData.spark;
+  if (sp) {
+    sp.t += dt;
+    if (!sparkPts) {
+      const n = 14, geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      sparkPts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffd35a, size: 0.003, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      sparkPts.frustumCulled = false; toyGroup.add(sparkPts);
+    }
+    const to = new THREE.Vector3(sp.toy.body.pos.x, toyFootY(sp.toy) + 0.04, sp.toy.body.pos.z), pa = sparkPts.geometry.attributes.position;
+    for (let i = 0; i < pa.count; i++) {
+      const k = THREE.MathUtils.clamp(sp.t - i * 0.03, 0, 1);
+      pa.setXYZ(i, sp.from.x + (to.x - sp.from.x) * k + Math.sin(i * 3 + sp.t * 20) * 0.003, sp.from.y + (to.y - sp.from.y) * k + Math.sin(k * Math.PI) * 0.03, sp.from.z + (to.z - sp.from.z) * k + Math.cos(i * 2 + sp.t * 20) * 0.003);
+    }
+    pa.needsUpdate = true; sparkPts.visible = true;
+    if (sp.t > 1.4) { w.toyData.spark = null; sparkPts.visible = false; }
+  } else if (sparkPts) sparkPts.visible = false;
+  toyHud.saveT -= dt;
+  if (toyHud.saveT < 0 && toyHud.saveT > -dt) saveProgress();
+  toyHud.pulse = Math.max(0, toyHud.pulse - dt);
+}
+const toyEls = {};
+function updateToyHud() {
+  const w = state.world;
+  if (!w || !w.toys) return;
+  const E = toyEls;
+  if (!E.staub) Object.assign(E, { staub: $('staub-line'), prompt: $('toy-prompt'), energy: $('toy-energy'), name: $('toy-energy-name'), fill: $('toy-fill'), btn: $('t-toy'), boss: $('boss-bar'), bossFill: $('boss-fill'), bossName: $('boss-name') });
+  const st = `Staub ${state.staub}/${TOYC.staubMax}`;
+  if (st !== toyHud.staub) { toyHud.staub = st; E.staub.textContent = st; }
+  E.staub.classList.toggle('pulse', toyHud.pulse > 0);
+  const info = toyPromptInfo();
+  const txt = info ? info.text : '';
+  if (txt !== toyHud.promptTxt) { toyHud.promptTxt = txt; E.prompt.textContent = txt; E.prompt.hidden = !txt; }
+  const btn = info && info.btn ? info.btn : '';
+  if (btn !== toyHud.btn) { toyHud.btn = btn; E.btn.hidden = !btn; E.btn.textContent = btn; }
+  const act = toyList().find(t => t.state === 'wach');
+  if (act) {
+    if (act.def.name !== toyHud.energyName) { toyHud.energyName = act.def.name; E.name.textContent = act.def.name + ' · Aufziehfeder'; E.energy.hidden = false; }
+    const pct = Math.round(100 * Math.max(0, act.energy) / act.maxEnergy);
+    if (pct !== toyHud.energyPct) { toyHud.energyPct = pct; E.fill.style.width = pct + '%'; }
+    const low = act.energy < 5; if (low !== toyHud.low) { toyHud.low = low; E.energy.classList.toggle('low', low); }
+  } else if (toyHud.energyName) { toyHud.energyName = ''; E.energy.hidden = true; toyHud.energyPct = -1; }
+  const boss = bossToy();
+  if (boss) {
+    if (!toyHud.boss) { toyHud.boss = true; E.boss.hidden = false; }
+    const pct = Math.round(100 * Math.max(0, boss.hp) / boss.maxHp);
+    if (pct !== toyHud.bossPct) { toyHud.bossPct = pct; E.bossFill.style.width = pct + '%'; E.bossName.textContent = `Knirsch · ${Math.ceil(Math.max(0, boss.hp))} / ${boss.maxHp}`; }
+    // unter den Eck-Anzeigen bleiben (Handy)
+    let top = 12;
+    if (isTouch || innerWidth < 640) { const a = $('hud-tl').getBoundingClientRect(), b = $('hud-tr').getBoundingClientRect(); top = Math.max(top, a.bottom + 6, b.bottom + 6, isTouch ? 108 : 0); }
+    E.boss.style.top = top + 'px';
+  } else if (toyHud.boss) { toyHud.boss = false; E.boss.hidden = true; toyHud.bossPct = -1; }
+}
+
 // ---------------- Hauptschleife ----------------
 // Ein Spielbild: Waffe, feste Physikschritte, Gegner, Krümel, Wellen, Anzeige
 function simulate(dt) {
@@ -3306,6 +4477,7 @@ function simulate(dt) {
   stepPhysics(dt);
   stepEnemies(dt);
   if (state.respawnT <= 0) { stepCrumbs(dt); stepObjectives(dt); }
+  updateToys(dt);
   probeHook(dt);
   state.hurtFlash = Math.max(0, state.hurtFlash - dt * 1.5);
   updateView(dt);
@@ -3892,12 +5064,13 @@ async function buildPhotoWorld(rec) {
   const root = new THREE.Group(), solid = new THREE.Group(), deco = new THREE.Group();
   root.add(solid, deco);
   buildShell(solid, deco, W, D, H, { floor, wallMat: M(0xd9d3c4), walls, skirt, ceil });
-  let spawn = new THREE.Vector3(0, 0.01, 0.15 * D), rugMat = null, extraUpdrafts = null;
+  let spawn = new THREE.Vector3(0, 0.01, 0.15 * D), rugMat = null, extraUpdrafts = null, furn = null;
   if (rec.furniture) {
     // Möbel für kleine Räume verkleinern, nie vergrößern; das Regal (2 m) muss unter die Decke passen
     const s = THREE.MathUtils.clamp(Math.min(1, W / ROOM0.W, D / ROOM0.D, (H - 0.05) / 2.05), 0.45, 1);
     rugMat = buildFurniture(solid, deco, W, D, H, { scale: s, window: !imgs.front, door: !imgs.back }).rugMat;
     spawn = new THREE.Vector3(0.1 * s, 0.01, 0.6 * s);
+    furn = { W, D, s };
     // Aufwinde der Demo (Lampe, Laptop, Sonnenfleck) mit derselben Verankerung wie die Möbel
     const at = (u, ax, az, nx, nz) => ({ ...u, x: nx + s * (u.x - ax), z: nz + s * (u.z - az), r: u.r * s, y0: u.y0 * s, y1: u.y1 * s });
     extraUpdrafts = DEMO_UPDRAFTS.map(u => u.x > 1 ? at(u, ROOM0.W / 2, -ROOM0.D / 2, W / 2, -D / 2) : at(u, 0, 0, 0, 0));
@@ -3905,7 +5078,7 @@ async function buildPhotoWorld(rec) {
   const ext = Math.max(3, 0.6 * Math.hypot(W, D));
   const sun = buildLights(deco, W, D, H, { lampY: imgs.ceil ? H - 0.55 : undefined, lampMesh: !imgs.ceil, shadowExt: ext, shadowFar: Math.max(8, 2.2 * Math.hypot(W, D, H)), ceilPower: 6 * THREE.MathUtils.clamp(Math.hypot(W, D) / Math.hypot(ROOM0.W, ROOM0.D), 0.5, 3) ** 2 });
   const inner = new THREE.Box3(new THREE.Vector3(-W / 2 + 0.08, -0.02, -D / 2 + 0.08), new THREE.Vector3(W / 2 - 0.08, H, D / 2 - 0.08));
-  return { root, collidable: solid, inner, spawn, spawnYaw: 0, name: 'Foto-Zimmer', kind: 'foto', floorY: 0, sun, detailMats: rugMat ? [rugMat] : [], extraUpdrafts, photoId: fotoIdFor(rec), photoRec: rec };
+  return { root, collidable: solid, inner, spawn, spawnYaw: 0, name: 'Foto-Zimmer', kind: 'foto', floorY: 0, sun, detailMats: rugMat ? [rugMat] : [], extraUpdrafts, furn, photoId: fotoIdFor(rec), photoRec: rec };
 }
 
 async function playPhotoRoom(rec) {
@@ -4061,6 +5234,10 @@ if (/[?&]debug=1/.test(location.search)) {
     tp: (x, y, z) => { resetMovers(); state.pos.set(x, y, z); state.vel.set(0, 0, 0); state.onGround = false; },
     give: t => { if (t === 'hook' || t === 'glider') { state.tools[t] = true; const o = state.world.objectives?.find(q => q.type === 'werkzeug' && q.tool === t); if (o) completeObjective(o, true); } },
     get objectives() { return state.world.objectives; },
+    get toys() { return state.world.toys; },
+    wake: id => { const t = toyById(id); if (t) { if (t.state !== 'schlaf') sleepToy(t, 'still'); t.cd = 0; wakeToy(t, 'spieler'); } return !!t; },
+    staub: n => { state.staub = THREE.MathUtils.clamp(state.staub + (n ?? TOYC.staubMax), 0, TOYC.staubMax); toyHud.dirty = true; },
+    boss: () => { const k = toyById('knirsch'); if (k) { if (k.state !== 'schlaf') sleepToy(k, 'still'); k.tamed = false; wakeToy(k, 'nest'); } return !!k; },
   };
 }
 window.__winzling = {
@@ -4068,7 +5245,7 @@ window.__winzling = {
   stepPlayer, stepPhysics, stepEnemies, stepEnemyPhysics, simulate, findWalkable, tryFire, scene, playCam, orbitCam, calib, renderer, THREE,
   spawnEnemy, crumbs, effects, setMode, applyCalibration, touchState, marker, resolveCapsule, moveBody, playerBody, PHYS_DT, queueJump,
   foto, buildPhotoWorld, playPhotoRoom, ingestPhoto, fotoIdFor, fotoAssign, fotoAssignMany, fotoFetch, fotoStore, fotoRemove, ROOM0, getUsePL: () => !dragMode, look, clock, detectUp, detectFloorY, loadScanFile,
-  hook, glide, mantle, HOOK, fireHook, hookTarget, releaseHook, tryMantle, findLedgeAhead, updraftLift, hasClearance, sphereFree, probeGround, resetMovers,
+  TOYS, TOYC, wakeToy, sleepToy, tryWakeToy, toyAction, mount, dismount, stepToysPhysics, updateToys, toyById, toyList, toyFree, toyFootY, toySpheres, toySB, damageNest, damageBoss, addStaub, furniturePoint, toyPlanFor, makeToyMesh, toyPromptInfo, bossToy, TOY_PLACES, TOY_GOALS, RING_POS, hook, glide, mantle, HOOK, fireHook, hookTarget, releaseHook, tryMantle, findLedgeAhead, updraftLift, hasClearance, sphereFree, probeGround, resetMovers,
   GFX, setGfx, setView, figure, fig, rope, muzzleWorld, updateFigure, updateRope, renderFrame, loadPost, startGame, completeObjective, stepObjectives, stepCrumbs, die, respawn, toLager, hitscan, destroyNest, trackList, saveProgress, loadProgress, roomIdFor,
   buildObjectives, generateScanObjectives, SCAN_STATS, DEMO_OBJECTIVES, toggleView, spawnCrumb, setWorld, getDemoWorld, updateView, seedFrom, winGame, objectsOf: () => state.world.objectives,
 };
