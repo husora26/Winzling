@@ -142,6 +142,45 @@ details li { margin-bottom: 4px; }
 .check input { width: 18px; height: 18px; accent-color: var(--pencil-dark); }
 .dims { font-variant-numeric: tabular-nums; font-size: 13px; background: rgba(245,184,46,0.25); border-radius: 6px; padding: 6px 8px; margin-top: 10px; }
 
+
+/* ---------- Erkundung: Ziele, Werkzeuge, Zielpfeil ---------- */
+#goal-list { list-style: none; margin: 4px 0 0; padding: 0; font-size: 13px; line-height: 1.35; }
+#goal-list li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#goal-list li.done { color: var(--mint); text-decoration: line-through; text-decoration-color: rgba(95,201,168,0.5); }
+#goal-list li.track { color: var(--pencil); }
+#tools { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; }
+.tool { position: relative; min-width: 64px; padding: 6px 10px; border-radius: 10px; background: var(--glass); border: 1px solid var(--glass-line); text-align: center; font-size: 11px; line-height: 1.2; color: var(--text-on-glass); }
+.tool b { display: block; font-family: var(--font-display); font-size: 13px; font-weight: 400; }
+.tool.locked { opacity: 0.35; filter: grayscale(1); }
+.tool.ready { border-color: var(--mint); }
+.tool.on { border-color: var(--pencil); box-shadow: 0 0 10px rgba(245,184,46,0.5); }
+.tool.stall { animation: stallblink 0.25s steps(2) infinite; border-color: var(--eraser); }
+@keyframes stallblink { 50% { background: rgba(232,106,106,0.7); } }
+.tool .cdbar { position: absolute; left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.15); overflow: hidden; }
+.tool .cdbar i { display: block; height: 100%; width: 100%; background: var(--pencil); transform-origin: left; }
+#crosshair.hookok::before, #crosshair.hookok::after { background: #7dff9b; }
+#goal-marker { position: absolute; left: 0; top: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translate(-50%, -50%); font-size: 12px; font-weight: 700; text-shadow: 0 1px 2px #000; color: var(--pencil); }
+#goal-marker i { width: 14px; height: 14px; background: var(--pencil); border: 2px solid var(--ink); transform: rotate(45deg); box-shadow: 0 0 8px rgba(245,184,46,0.8); }
+#goal-edge { position: absolute; left: 0; top: 0; pointer-events: none; display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; text-shadow: 0 1px 2px #000; color: var(--pencil); transform: translate(-50%, -50%); }
+#goal-edge i { width: 0; height: 0; border-left: 14px solid var(--pencil); border-top: 8px solid transparent; border-bottom: 8px solid transparent; filter: drop-shadow(0 0 3px #000); }
+#glider-ribs { position: absolute; inset: 0 0 auto 0; height: 14vh; pointer-events: none; opacity: 0; transition: opacity 0.25s;
+  background:
+    linear-gradient(100deg, transparent 0 22%, rgba(60,45,25,0.85) 22.2% 22.9%, transparent 23.1% 100%),
+    linear-gradient(80deg, transparent 0 77%, rgba(60,45,25,0.85) 77.1% 77.8%, transparent 78% 100%),
+    linear-gradient(180deg, rgba(245,184,46,0.28), transparent); }
+#glider-ribs.show { opacity: 1; }
+.gfx-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 12px; font-size: 13px; }
+.gfx-row b { margin-right: 2px; }
+.btn.small.sel { background: var(--pencil); }
+#win .note { width: min(480px, 100%); }
+#win dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; margin: 12px 0 16px; font-size: 15px; }
+#win dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+#win dt { margin: 0; }
+#t-hook { right: calc(118px + env(safe-area-inset-right, 0px)); bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
+#t-glide { right: calc(118px + env(safe-area-inset-right, 0px)); bottom: calc(250px + env(safe-area-inset-bottom, 0px)); }
+#t-view { left: calc(50% + 34px); top: calc(10px + env(safe-area-inset-top, 0px)); width: 44px; height: 44px; font-size: 10px; }
+#t-hook.off, #t-glide.off { opacity: 0.3; }
+
 /* Touch-Steuerung */
 #touch { position: fixed; inset: 0; pointer-events: none; }
 #touch[hidden] { display: none !important; }
@@ -165,6 +204,7 @@ details li { margin-bottom: 4px; }
   .hud-box { padding: 6px 9px; }
   .hud-big { font-size: 18px; }
   #wave-line { font-size: 13px; }
+  #goal-list { font-size: 11px; }
   #scale-line { font-size: 10.5px; line-height: 1.3; }
   /* Kalibrierung als Blatt am unteren Rand, damit der Scan sichtbar bleibt */
   #calib { inset: auto 0 0 0; }
@@ -177,6 +217,10 @@ details li { margin-bottom: 4px; }
   #t-reload { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
   #t-jump { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); right: calc(100px + env(safe-area-inset-right, 0px)); }
   #t-fire { bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
+  #tools { bottom: auto; top: calc(62px + env(safe-area-inset-top, 0px)); }
+  .tool { min-width: 52px; padding: 4px 6px; font-size: 10px; }
+  #t-view { left: calc(50% - 22px); top: calc(58px + env(safe-area-inset-top, 0px)); }
+  #tools { display: none; }
 }
 </style>
 
@@ -186,12 +230,14 @@ details li { margin-bottom: 4px; }
   <div id="vignette"></div>
   <div id="crosshair"></div>
   <div class="hud-box" id="hud-tl">
-    <div id="wave-line">Welle 1</div>
+    <div id="wave-line">Kapitel 1</div>
+    <ul id="goal-list"></ul>
     <div id="scale-line">Höhe über dem Boden: 0,0 cm</div>
   </div>
   <div class="hud-box" id="hud-tr">
     <div class="hud-label">Punkte</div>
     <div class="hud-big" id="score">0</div>
+    <div class="hud-label" id="split-line">Splitter 0/0</div>
   </div>
   <div class="hud-box" id="hud-bl">
     <div class="hud-label">Lebenskraft</div>
@@ -199,7 +245,14 @@ details li { margin-bottom: 4px; }
   </div>
   <div class="hud-box" id="hud-br">
     <div class="hud-label">Nadelschleuder</div>
-    <div class="hud-big" id="ammo">16 / 16</div>
+    <div class="hud-big" id="ammo">16 / 48</div>
+  </div>
+  <div id="glider-ribs"></div>
+  <div id="goal-marker" hidden><i></i><span id="goal-dist"></span></div>
+  <div id="goal-edge" hidden><i id="goal-edge-arrow"></i><span id="goal-edge-txt"></span></div>
+  <div id="tools">
+    <div class="tool locked" id="tool-hook"><b>E</b>Haken<div class="cdbar"><i id="hook-cd"></i></div></div>
+    <div class="tool locked" id="tool-glide"><b>Leertaste</b><span id="glide-txt">Gleiter</span></div>
   </div>
   <div id="toast"></div>
 </div>
@@ -209,15 +262,19 @@ details li { margin-bottom: 4px; }
   <button class="tbtn" id="t-fire" type="button">Feuer</button>
   <button class="tbtn" id="t-jump" type="button">Sprung</button>
   <button class="tbtn" id="t-reload" type="button">Laden</button>
+  <button class="tbtn off" id="t-hook" type="button">Haken</button>
+  <button class="tbtn off" id="t-glide" type="button">Gleiter</button>
+  <button class="tbtn" id="t-view" type="button">Sicht</button>
   <button class="tbtn" id="t-pause" type="button" aria-label="Pause">II</button>
 </div>
 
 <div class="overlay dim" id="menu">
   <div class="note">
     <h1>Winzling<span class="tiny"> 2 cm</span></h1>
-    <p class="tagline">Du bist so groß wie ein Radiergummi. Dein Zimmer ist ein Kontinent, und unter dem Bett wohnen die Fusselbiester.</p>
+    <p class="tagline">Du bist so groß wie ein Radiergummi. Dein Zimmer ist ein Kontinent: sammle Glitzersplitter, zerstör die Fusselnester, erklimm den Gipfel und entzünde das Leuchtfeuer.</p>
     <div class="btn-row">
       <button class="btn primary" id="btn-demo" type="button">Im Demo-Zimmer spielen</button>
+      <button class="btn" id="btn-new" type="button" hidden>Neu beginnen</button>
       <button class="btn" id="btn-load" type="button">Eigenen Raum-Scan laden</button>
       <input type="file" id="file-input" accept=".glb,.gltf,.obj,.ply">
     </div>
@@ -225,16 +282,22 @@ details li { margin-bottom: 4px; }
     <div class="controls-list kb-only">
       <kbd>W A S D</kbd><span>Laufen</span>
       <kbd>Maus</kbd><span>Umsehen, Linksklick schießt</span>
-      <kbd>Leertaste</kbd><span>Springen. In der Luft halten: Gleiten mit dem Löwenzahnschirm</span>
+      <kbd>Leertaste</kbd><span>Springen. An einer Kante gedrückt halten: hochziehen. In der Luft halten: Löwenzahnschirm. Am Seil: loslassen</span>
+      <kbd>E</kbd><span>Enterhaken (auch rechte Maustaste), nach dem 1. Kapitel</span>
       <kbd>Shift</kbd><span>Rennen</span>
       <kbd>R</kbd><span>Nachladen</span>
+      <kbd>V</kbd><span>Ego- oder Außenansicht, Mausrad zoomt</span>
+      <kbd>Tab</kbd><span>Zielpfeil wechseln</span>
       <kbd>Esc</kbd><span>Pause</span>
     </div>
     <div class="controls-list touch-only">
       <kbd>Links wischen</kbd><span>Laufen, ganz außen rennen</span>
       <kbd>Rechts wischen</kbd><span>Umsehen</span>
       <kbd>Feuer</kbd><span>Schießen</span>
-      <kbd>Sprung</kbd><span>Springen. In der Luft gedrückt halten: Gleiten mit dem Löwenzahnschirm</span>
+      <kbd>Sprung</kbd><span>Springen, an Kanten hochziehen, am Seil loslassen. In der Luft halten: Schirm</span>
+      <kbd>Haken</kbd><span>Enterhaken (nach dem 1. Kapitel)</span>
+      <kbd>Gleiter</kbd><span>Gleiter auf- und zuklappen (nach dem 2. Kapitel)</span>
+      <kbd>Sicht</kbd><span>Ego- oder Außenansicht</span>
       <kbd>Laden</kbd><span>Nachladen</span>
       <kbd>II</kbd><span>Pause</span>
     </div>
@@ -248,6 +311,11 @@ details li { margin-bottom: 4px; }
       </ol>
       Ohne App geht es mit der freien Software COLMAP auf einem PC mit Nvidia-Grafikkarte. Das Skript dafür liegt im Projekt neben diesem Spiel.
     </details>
+    <div class="gfx-row" data-gfx-row><b>Grafik:</b>
+      <button class="btn small" type="button" data-gfx="schnell">Schnell</button>
+      <button class="btn small" type="button" data-gfx="schoen">Schön</button>
+      <button class="btn small" type="button" data-gfx="kino">Kino</button>
+    </div>
     <p class="fine">Maßstab: Dein Winzling ist 2,0 cm groß, seine Augen sind auf 1,75 cm Höhe. Ein Zentimeter für dich fühlt sich an wie 87 cm für einen Menschen. Ein 75 cm hoher Schreibtisch ist für dich ein 66-Meter-Turm.</p>
   </div>
 </div>
@@ -287,11 +355,31 @@ details li { margin-bottom: 4px; }
 <div class="overlay dim" id="pause" hidden>
   <div class="note" style="width:min(420px,100%)">
     <h2 id="pause-title">Pause</h2>
-    <p id="pause-text" style="margin:0 0 14px">Die Fusselbiester warten auf dich.</p>
+    <p id="pause-text" style="margin:0 0 14px">Die Fusselnester warten auf dich.</p>
     <div class="btn-row">
       <button class="btn primary" id="btn-resume" type="button">Weiterspielen</button>
-      <button class="btn" id="btn-restart" type="button">Neu starten</button>
+      <button class="btn" id="btn-lager" type="button">Zurück zum Lager</button>
+      <button class="btn" id="btn-view" type="button">Ansicht wechseln</button>
+      <button class="btn" id="btn-restart" type="button">Neu beginnen</button>
       <button class="btn" id="btn-menu" type="button">Hauptmenü</button>
+    </div>
+    <div class="gfx-row" data-gfx-row><b>Grafik:</b>
+      <button class="btn small" type="button" data-gfx="schnell">Schnell</button>
+      <button class="btn small" type="button" data-gfx="schoen">Schön</button>
+      <button class="btn small" type="button" data-gfx="kino">Kino</button>
+    </div>
+    <p class="fine kb-only">E Haken · Leertaste Springen/Kante/Gleiter/Lösen · V Ansicht · Tab Zielwechsel · R Nachladen</p>
+  </div>
+</div>
+
+<div class="overlay dim" id="win" hidden>
+  <div class="note">
+    <h2 style="font-size:28px">Zimmer bezwungen</h2>
+    <p style="margin:0">Das Leuchtfeuer brennt. Aus 2 cm Höhe hast du den Gipfel erreicht.</p>
+    <dl id="win-stats"></dl>
+    <div class="btn-row">
+      <button class="btn primary" id="btn-again" type="button">Nochmal</button>
+      <button class="btn" id="btn-free" type="button">Frei erkunden</button>
     </div>
   </div>
 </div>
@@ -892,7 +980,11 @@ const state = {
   ammo: 16, mag: 16, reloading: 0,
   fireCd: 0,
   score: 0,
-  wave: 0, waveTimer: 0,
+  ammoRes: 48, ammoRegen: 0,
+  tools: { hook: false, glider: false },
+  chapter: 1, time: 0, deaths: 0, won: false, free: false, best: 0,
+  carrying: null, respawnT: 0, airT: 0, track: 0,
+  view: 'fp', camDist: 0.06,
   hurtFlash: 0,
   bob: 0,
   gliding: false,
@@ -998,31 +1090,7 @@ function makeEnemyMesh(kind) {
   return g;
 }
 
-const ENEMY_R = { fussel: 0.0085, milbe: 0.0045 };
-function spawnEnemy(kind, at) {
-  const cfg = kind === 'fussel'
-    ? { r: ENEMY_R.fussel, hp: 3, speed: 0.045, dmg: 18, points: 100 }
-    : { r: ENEMY_R.milbe, hp: 1, speed: 0.1, dmg: 9, points: 60 };
-  const mesh = makeEnemyMesh(kind);
-  mesh.scale.setScalar(cfg.r);
-  scene.add(mesh);
-  const e = {
-    kind, ...cfg, maxHp: cfg.hp, mesh, pos: at.clone().add(new THREE.Vector3(0, cfg.r + 0.002, 0)), vel: new THREE.Vector3(),
-    onGround: false, y0: 0, y1: 0, canStep: false, supportY: at.y,
-    dir: new THREE.Vector3(), sp: 0, hitCd: 0, wander: Math.random() * 6.28, stuck: 0, lastPos: at.clone(),
-    anchor: at.clone(), anchorT: 0, flash: 0, spawnT: 0,
-  };
-  e.mesh.position.copy(e.pos);
-  enemies.push(e);
-  return e;
-}
 
-function removeEnemy(e) {
-  scene.remove(e.mesh);
-  for (const m of e.mesh.userData.ownMaterials) m.dispose();   // Geometrien, Textur und Pupillen-Material sind geteilt
-  const i = enemies.indexOf(e);
-  if (i >= 0) enemies.splice(i, 1);
-}
 
 // zufälliger begehbarer Punkt in der Nähe
 const ray = new THREE.Ray();
@@ -1049,13 +1117,13 @@ function insideSolid(bvh, p) {
 }
 // zufälliger begehbarer Punkt in der Nähe. Nur Flächen, die nach oben zeigen, im begehbaren Innenbereich, mit Platz darüber.
 // Beim Demo-Zimmer (geschlossene Körper) genügt normal.y > 0,65; bei Scans (Windungsrichtung unsicher) zählt der Betrag, dafür entscheidet die Platzprüfung.
-function findWalkable(center, minR, maxR, yRange = [-0.8, 0.4], radius = P.radius) {
+function findWalkable(center, minR, maxR, yRange = [-0.8, 0.4], radius = P.radius, rng = Math.random) {
   const w = state.world;
   const bvh = w.collider.geometry.boundsTree;
   const b = w.inner || w.bounds;
   const closed = w.kind === 'demo';
   for (let t = 0; t < 60; t++) {
-    const a = Math.random() * Math.PI * 2, d = rand(minR, maxR);
+    const a = rng() * Math.PI * 2, d = minR + rng() * (maxR - minR);
     const x = center.x + Math.cos(a) * d, z = center.z + Math.sin(a) * d;
     if (x < b.min.x || x > b.max.x || z < b.min.z || z > b.max.z) continue;
     ray.origin.set(x, center.y + yRange[1] + 0.05, z);
@@ -1077,17 +1145,6 @@ function findWalkable(center, minR, maxR, yRange = [-0.8, 0.4], radius = P.radiu
   return null;
 }
 
-// ---------------- Krümel (Heilung) ----------------
-const crumbGeo = new THREE.DodecahedronGeometry(0.003, 0);
-const crumbMat = new THREE.MeshStandardMaterial({ color: 0xd9a35a, roughness: 0.9, flatShading: true });
-function spawnCrumb(at) {
-  const m = new THREE.Mesh(crumbGeo, crumbMat);
-  m.position.copy(at).add(new THREE.Vector3(0, 0.004, 0));
-  m.scale.set(1, 0.7, 1.2);
-  m.castShadow = true;
-  scene.add(m);
-  crumbs.push({ mesh: m, t: Math.random() * 6 });
-}
 
 // ---------------- Effekte ----------------
 function addTracer(from, to) {
@@ -1135,6 +1192,11 @@ const sfx = {
   pick: () => { blip('triangle', 660, 990, 0.12, 0.1); setTimeout(() => blip('triangle', 990, 1320, 0.12, 0.1), 90); },
   reload: () => blip('square', 220, 330, 0.1, 0.05),
   empty: () => blip('square', 120, 100, 0.05, 0.05),
+  hookThrow: () => blip('sawtooth', 500, 1500, 0.07, 0.05),
+  hookHit: () => { blip('square', 220, 160, 0.06, 0.1); blip('', 2200, 0, 0.04, 0.06, true); },
+  mantle: () => blip('triangle', 180, 340, 0.2, 0.06),
+  stall: () => blip('sawtooth', 300, 110, 0.35, 0.1),
+  goal: () => { blip('triangle', 523, 784, 0.15, 0.1); setTimeout(() => blip('triangle', 784, 1175, 0.2, 0.1), 110); },
 };
 
 // ---------------- HUD ----------------
@@ -1148,19 +1210,23 @@ function toast(title, sub = '', secs = 2.5) {
 }
 function updateHud() {
   $('hp-fill').style.width = Math.max(0, state.hp) + '%';
-  $('ammo').textContent = state.reloading > 0 ? 'Lädt …' : `${state.ammo} / ${state.mag}`;
+  $('ammo').textContent = state.reloading > 0 ? 'Lädt …' : `${state.ammo} / ${state.ammoRes}`;
   $('score').textContent = state.score.toLocaleString('de-DE');
-  const left = enemies.length;
-  $('wave-line').textContent = state.waveTimer > 0 ? `Welle ${state.wave + 1} kommt …` : `Welle ${state.wave} · ${left} ${left === 1 ? 'Gegner' : 'Gegner'} übrig`;
   const floorY = state.world ? state.world.floorY : 0;
   const hcm = Math.max(0, (state.pos.y - floorY) * 100);
   const human = (state.pos.y - floorY) * HUMAN_FACTOR;
   $('scale-line').textContent = `Höhe über dem Boden: ${fmt(hcm)} cm · für einen Menschen wären das ${fmt(Math.max(0, human), 0)} m`;
-  $('vignette').style.boxShadow = `inset 0 0 120px 40px rgba(232,106,106,${Math.min(0.75, state.hurtFlash)})`;
+  $('vignette').style.boxShadow = `inset 0 0 120px 40px rgba(232,106,106,${Math.min(0.75, state.hurtFlash + (state.respawnT > 0 ? 0.5 : 0))})`;
+  updateGoalHud();
+  updateGoalArrow();
+  updateTools();
 }
 
 // ---------------- Welten laden ----------------
 function clearWorld() {
+  disposeObjectives();
+  resetMovers();
+  state.carrying = null;
   for (const e of [...enemies]) removeEnemy(e);
   for (const c of crumbs) scene.remove(c.mesh);
   crumbs.length = 0;
@@ -1216,20 +1282,31 @@ function getDemoWorld() {
 }
 
 // ---------------- Spielstart ----------------
-function startGame() {
+function startGame(fresh = false) {
   clearWorldDynamic();
   const w = state.world;
+  w.roomId = roomIdFor(w);
+  const old = loadProgress(w.roomId);
+  state.best = old?.best || 0;
+  if (fresh) writeProgress(w.roomId, { v: 1, done: [], chapter: 1, tools: { hook: false, glider: false }, ammoReserve: 48, time: 0, deaths: 0, best: state.best, won: false });
+  const sv = fresh ? null : old;
   state.pos.copy(w.spawn);
   state.pos.y += 0.003;
   state.vel.set(0, 0, 0);
   state.yaw = w.spawnYaw || 0; state.pitch = -0.05;
   state.hp = 100; state.ammo = state.mag; state.reloading = 0; state.score = 0;
-  state.wave = 0; state.waveTimer = 2.5;
+  state.ammoRes = THREE.MathUtils.clamp(sv?.ammoReserve ?? 48, 0, 96); state.ammoRegen = 0;
+  state.time = sv?.time || 0; state.deaths = sv?.deaths || 0; state.won = false; state.free = !!sv?.won;
+  state.respawnT = 0; state.track = 0; state.chapter = 1; lastGoalKey = '';
   state.onGround = false; state.jumpQueued = false; state.jumpBuf = 0; physAcc = 0;
+  resetMovers();
+  initObjectives(w, sv);
+  state.won = !!objDone('G');
   activeCam = playCam;
   orbit.enabled = false;
   setMode('play');
-  toast(w.name, 'Du bist 2 cm groß. Die Fusselbiester kommen. Krümel heilen dich.', 3.5);
+  if (sv && sv.done.length) toast(w.name, 'Fortschritt geladen. Du startest im Lager.', 3);
+  else toast(w.name, 'Sammle die Glitzersplitter und zerstöre das Fusselnest.', 3.5);
 }
 function clearWorldDynamic() {
   for (const e of [...enemies]) removeEnemy(e);
@@ -1237,55 +1314,15 @@ function clearWorldDynamic() {
   crumbs.length = 0;
 }
 
-// Spawnpunkt, an dem auch die Kugel des Gegners (Radius r) frei steht; sonst null
-const spawnQ = new THREE.Vector3(), spawnC = new THREE.Vector3();
-function sphereFree(bvh, p, r) {
-  spawnQ.copy(p); spawnQ.y += r + 0.002;
-  resolveCapsule(bvh, spawnQ, spawnQ, r, spawnC);
-  return spawnC.length() <= 0.0005;
-}
-function findEnemySpot(minR, maxR, r) {
-  const bvh = state.world.collider.geometry.boundsTree;
-  for (let t = 0; t < 6; t++) {
-    const p = findWalkable(state.pos, minR, maxR);
-    if (p && sphereFree(bvh, p, r)) return p;
-  }
-  return null;
-}
-function nextWave() {
-  state.wave++;
-  const n = 2 + state.wave * 2;
-  const mites = Math.max(0, state.wave - 1) * 2;
-  let placed = 0;
-  for (let i = 0; i < n + mites; i++) {
-    const kind = i < n ? 'fussel' : 'milbe';
-    const p = findEnemySpot(0.35, 1.1 + state.wave * 0.1, ENEMY_R[kind]);
-    if (!p) continue;
-    const e = spawnEnemy(kind, p);
-    e.spawnT = 0.6;
-    placed++;
-  }
-  for (let i = 0; i < 3; i++) { const p = findWalkable(state.pos, 0.1, 0.8); if (p) spawnCrumb(p); }
-  if (!placed) { // in sehr engen Scans: direkt neben dem Spieler, aber nur auf geprüftem Boden
-    let p = findEnemySpot(0.02, 0.3, ENEMY_R.fussel);
-    if (!p) {
-      const bvh = state.world.collider.geometry.boundsTree;
-      ray.origin.set(state.pos.x + 0.2, state.pos.y + 0.05, state.pos.z);
-      ray.direction.set(0, -1, 0);
-      const h = bvh.raycastFirst(ray, THREE.DoubleSide);
-      if (h && h.face.normal.y > 0.65 && Math.abs(h.point.y - state.pos.y) < 0.1 && sphereFree(bvh, h.point, ENEMY_R.fussel)) p = h.point.clone();
-    }
-    if (p) { spawnEnemy('fussel', p); placed++; }
-  }
-  toast(`Welle ${state.wave}`, `${placed} Gegner krabbeln aus den Ecken`, 2.2);
-}
 
 function setMode(m) {
   state.mode = m;
   $('menu').hidden = m !== 'menu';
   $('calib').hidden = m !== 'calib';
   $('pause').hidden = !(m === 'paused' || m === 'dead');
-  $('hud').hidden = !(m === 'play' || m === 'paused' || m === 'dead');
+  $('win').hidden = m !== 'won';
+  $('hud').hidden = !(m === 'play' || m === 'paused' || m === 'dead' || m === 'won');
+  if (m === 'menu' || m === 'calib') resetMovers();
   $('touch').hidden = !(isTouch && m === 'play');
   if (m !== 'play' && document.pointerLockElement) document.exitPointerLock();
 }
@@ -1318,7 +1355,7 @@ function pause() {
   resetTouchInput();
   setMode('paused');
   $('pause-title').textContent = 'Pause';
-  $('pause-text').textContent = 'Die Fusselbiester warten auf dich.';
+  $('pause-text').textContent = 'Die Fusselnester warten auf dich.';
   $('btn-resume').hidden = false;
 }
 function resume() {
@@ -1334,6 +1371,9 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyR') reload();
     if (e.code === 'Escape' || e.code === 'KeyP') pause();
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) queueJump(); }
+    if (e.code === 'KeyE' && !e.repeat) fireHook();
+    if (e.code === 'KeyV' && !e.repeat) toggleView();
+    if (e.code === 'Tab') { e.preventDefault(); if (!e.repeat) state.track++; }
   } else if (state.mode === 'paused' && (e.code === 'KeyP')) resume();
 });
 addEventListener('keyup', e => keys.delete(e.code));
@@ -1341,9 +1381,16 @@ addEventListener('blur', () => { keys.clear(); mouseDown = false; resetTouchInpu
 
 // Maus: mit Pointer-Lock frei umsehen; sonst ziehen zum Umsehen, Klick schießt
 let drag = null;
+addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('wheel', e => {
+  if (state.mode !== 'play' || state.view !== 'tp') return;
+  e.preventDefault();
+  state.camDist = THREE.MathUtils.clamp(state.camDist * (e.deltaY > 0 ? 1.12 : 1 / 1.12), 0.03, 0.2);
+}, { passive: false });
 canvas.addEventListener('mousedown', e => {
   if (state.mode !== 'play' || isTouch) return;
   audio();
+  if (e.button === 2) { e.preventDefault(); fireHook(); return; }
   if (document.pointerLockElement === canvas) {
     if (e.button === 0) { mouseDown = true; tryFire(); }
     return;
@@ -1424,60 +1471,297 @@ const holdBtn = (id, on, off) => {
 holdBtn('t-fire', () => { touchState.firing = true; }, () => { touchState.firing = false; });
 holdBtn('t-jump', () => { keys.add('Space'); queueJump(); }, () => keys.delete('Space'));
 holdBtn('t-reload', () => reload());
+holdBtn('t-hook', () => fireHook());
+holdBtn('t-glide', () => { if (state.tools.glider && !state.onGround) queueJump(); });
+holdBtn('t-view', () => toggleView());
 holdBtn('t-pause', () => pause());
 
-// ---------------- Schießen ----------------
-function reload() {
-  if (state.reloading > 0 || state.ammo === state.mag) return;
-  state.reloading = 1.1; sfx.reload();
-}
-const raycaster = new THREE.Raycaster();
-function tryFire() {
-  if (state.mode !== 'play' || state.fireCd > 0 || state.reloading > 0) return;
-  if (state.ammo <= 0) { sfx.empty(); reload(); state.fireCd = 0.25; return; }
-  state.ammo--; state.fireCd = 0.15;
-  sfx.shoot();
-  gun.position.z = GUN_Z + 0.0018; // Rückstoß
-  const origin = new THREE.Vector3(); playCam.getWorldPosition(origin);
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(playCam.quaternion);
-  dir.x += rand(-0.004, 0.004); dir.y += rand(-0.004, 0.004); dir.normalize();
-  ray.origin.copy(origin); ray.direction.copy(dir);
-  let best = Infinity, target = null;
-  const wh = state.world.collider.geometry.boundsTree.raycastFirst(ray, THREE.DoubleSide);
-  if (wh) best = wh.distance;
-  const tmp = new THREE.Vector3();
-  for (const e of enemies) {
-    const sph = new THREE.Sphere(e.pos, e.r * 1.15);
-    if (ray.intersectSphere(sph, tmp)) { const d = tmp.distanceTo(origin); if (d < best) { best = d; target = e; } }
-  }
-  const end = origin.clone().addScaledVector(dir, Math.min(best, 8));
-  addTracer(muzzleWorld(), end);
-  if (target) {
-    target.hp--; target.flash = 0.12; sfx.hit();
-    target.vel.x += dir.x * 0.15; target.vel.z += dir.z * 0.15; target.vel.y += 0.25; target.onGround = false;
-    $('crosshair').classList.add('hit'); setTimeout(() => $('crosshair').classList.remove('hit'), 90);
-    addPuff(end, target.kind === 'fussel' ? 0xcfc8d6 : 0xe86a6a, 8, 0.0008, 0.04);
-    if (target.hp <= 0) {
-      state.score += target.points * state.wave;
-      addPuff(target.pos, target.kind === 'fussel' ? 0xb6aebf : 0xc0473d, 30, 0.0015, 0.09);
-      sfx.pop();
-      if (Math.random() < 0.3) spawnCrumb(target.pos.clone().add(new THREE.Vector3(0, -target.r, 0)));
-      removeEnemy(target);
-      if (!enemies.length) { state.waveTimer = 3.5; toast(`Welle ${state.wave} geschafft!`, '', 2); }
-    }
-  } else if (wh) {
-    addPuff(end, 0xfff1b0, 6, 0.0006, 0.03);
-  }
-}
 
 // ---------------- Physik-Update ----------------
 const UP = new THREE.Vector3(0, 1, 0);
 const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3(), hdv = new THREE.Vector3();
 let physAcc = 0;
 
+// ---------------- Erkundung: Kantengriff, Enterhaken, Gleiter ----------------
+const HOOK = { range: 1.2, minRange: 0.03, retract: 0.9, release: 0.4, maxVel: 1.6, swing: 0.8, flyT: 0.08, cone: 2.5 * Math.PI / 180 };
+const GLIDER = { sink: 0.16, speed: 0.55, turn: 2.2, stallV: 0.26 };
+const hook = { s: 'idle', anchor: new THREE.Vector3(), ledge: null, ceil: false, L: 0, Lmin: 0.012, cd: 0, flyT: 0, res: null, retract: true, progT: 0, progD: 0, blockT: 0, probeT: 0, valid: false, flash: 0 };
+const glide = { on: false, v: 0, heading: 0, stallT: 0, rate: 0, roll: 0, fov: 78, cdTap: 0 };
+const mantle = { on: false, t: 0, cd: 0, from: new THREE.Vector3(), mid: new THREE.Vector3(), to: new THREE.Vector3() };
+const hkRay = new THREE.Ray(), hkRay2 = new THREE.Ray(), mnRay = new THREE.Ray();
+const hkV1 = new THREE.Vector3(), hkV2 = new THREE.Vector3(), hkDir = new THREE.Vector3(), hkR1 = new THREE.Vector3(), hkR2 = new THREE.Vector3();
+const hkChest = new THREE.Vector3(), hkRel = new THREE.Vector3(), hkNew = new THREE.Vector3(), hkOld = new THREE.Vector3(), hkDelta = new THREE.Vector3(), hkAcc = new THREE.Vector3(), mnTmp = new THREE.Vector3(), mnDelta = new THREE.Vector3();
+
+function lookDir(out) {
+  const cp = Math.cos(state.pitch);
+  return out.set(-Math.sin(state.yaw) * cp, Math.sin(state.pitch), -Math.cos(state.yaw) * cp);
+}
+const eyePos = out => out.set(state.pos.x, state.pos.y + P.eye, state.pos.z);
+
+// Auftrieb an einem Punkt (m/s), Summe aller Aufwinde: voll im Kern (halber Radius), linear auf 0 am Rand, oben weich ausblendend
+function updraftLift(p) {
+  const ups = state.world && state.world.updrafts;
+  if (!ups) return 0;
+  let lift = 0;
+  for (const u of ups) {
+    if (p.y < u.y0 || p.y > u.y1) continue;
+    const d = Math.hypot(p.x - u.x, p.z - u.z);
+    if (d >= u.r) continue;
+    const core = u.r * 0.5;
+    const f = d <= core ? 1 : (u.r - d) / (u.r - core);
+    lift += u.lift * f * Math.min(1, (u.y1 - p.y) / 0.15);
+  }
+  return lift;
+}
+
+function resetMovers() {
+  hook.s = 'idle'; hook.cd = 0; hook.ledge = null; hook.res = null; hook.valid = false; hook.blockT = 0;
+  glide.on = false; glide.stallT = 0; glide.rate = 0; glide.roll = 0;
+  mantle.on = false; mantle.cd = 0;
+  state.airT = 0;
+}
+
+// ---------- Kantengriff ----------
+function findLedgeAhead(bvh, dx, dz) {
+  const p = state.pos;
+  mnRay.origin.set(p.x, p.y + 0.012, p.z); mnRay.direction.set(dx, 0, dz);
+  const wh = bvh.raycastFirst(mnRay, THREE.DoubleSide, 0, P.radius + 0.006);
+  if (!wh) return null;
+  const wn = wh.face.normal;
+  if (Math.abs(wn.y) >= 0.3 || Math.abs(wn.x * dx + wn.z * dz) < 0.4) return null;
+  mnRay.origin.set(p.x + dx * (P.radius + 0.008), p.y + 0.032, p.z + dz * (P.radius + 0.008)); mnRay.direction.set(0, -1, 0);
+  const dh = bvh.raycastFirst(mnRay, THREE.DoubleSide, 0, 0.033);
+  if (!dh) return null;
+  const rise = dh.point.y - p.y;
+  if (rise < 0.006 || rise > 0.030) return null;
+  const tn = hkV1.copy(dh.face.normal); if (tn.y < 0) tn.negate();
+  if (tn.y <= 0.65) return null;
+  const t = new THREE.Vector3(dh.point.x + dx * 0.003, dh.point.y, dh.point.z + dz * 0.003);
+  return hasClearance(bvh, t) ? t : null;
+}
+function startMantle(t) {
+  mantle.on = true; mantle.t = 0;
+  mantle.from.copy(state.pos);
+  mantle.mid.set(state.pos.x, t.y + 0.0015, state.pos.z);
+  mantle.to.set(t.x, t.y + 0.0005, t.z);
+  state.vel.set(0, 0, 0); state.jumpQueued = false; state.jumpBuf = 0; state.onGround = false;
+  if (glide.on) closeGlide();
+  sfx.mantle();
+}
+function stepMantle(h, bvh) {
+  mantle.t += h;
+  const k = Math.min(1, mantle.t / 0.35), e = x => x * x * (3 - 2 * x);
+  if (k < 0.6) mnTmp.lerpVectors(mantle.from, mantle.mid, e(k / 0.6)); else mnTmp.lerpVectors(mantle.mid, mantle.to, e((k - 0.6) / 0.4));
+  mnDelta.copy(mnTmp).sub(state.pos);
+  moveBody(bvh, playerBody, mnDelta, moveAux);
+  state.vel.set(0, 0, 0);
+  if (k >= 1) {
+    mantle.on = false; mantle.cd = 0.25;
+    state.onGround = probeGround(bvh, playerBody); playerBody.supportY = state.pos.y;
+  }
+}
+function tryMantle(bvh) {
+  if (mantle.cd > 0 || !(keys.has('Space') || state.jumpQueued)) return false;
+  const ml = Math.hypot(move.x, move.z);
+  if (ml < 0.1) return false;
+  const t = findLedgeAhead(bvh, move.x / ml, move.z / ml);
+  if (!t) return false;
+  startMantle(t);
+  return true;
+}
+
+// ---------- Enterhaken ----------
+// Anker zu einem Treffer: Kantenanker auf die Lippe, wenn knapp unter einer Oberkante getroffen; sonst normaler Anker (man hängt)
+function hookAnchorFor(bvh, hit, dir) {
+  const n = hkV2.copy(hit.face.normal); if (n.dot(dir) > 0) n.negate();
+  const H = hit.point;
+  if (Math.abs(n.y) < 0.5) {
+    const l = Math.hypot(n.x, n.z);
+    if (l > 1e-6) {
+      hkRay2.origin.set(H.x - n.x / l * 0.006, H.y + 0.035, H.z - n.z / l * 0.006); hkRay2.direction.set(0, -1, 0);
+      const t = bvh.raycastFirst(hkRay2, THREE.DoubleSide, 0, 0.045);
+      if (t) {
+        const tn = hkV1.copy(t.face.normal); if (tn.y < 0) tn.negate();
+        if (tn.y > 0.65 && hasClearance(bvh, t.point)) return { anchor: new THREE.Vector3(H.x, t.point.y, H.z), ledge: t.point.clone(), ceil: false, dist: hit.distance };
+      }
+    }
+  }
+  return { anchor: H.clone().addScaledVector(n, 0.0004), ledge: null, ceil: n.y < -0.5, dist: hit.distance };
+}
+function hookTarget() {
+  const bvh = state.world.collider.geometry.boundsTree;
+  eyePos(hkRay.origin);
+  lookDir(hkDir);
+  const cast = dir => {
+    hkRay.direction.copy(dir);
+    const hit = bvh.raycastFirst(hkRay, THREE.DoubleSide, 0, HOOK.range + 0.001);
+    if (!hit || hit.distance > HOOK.range || hit.distance < HOOK.minRange) return null;
+    return hookAnchorFor(bvh, hit, dir);
+  };
+  const centre = cast(hkDir);
+  if (centre && centre.ledge) return centre;
+  if (Math.abs(hkDir.y) > 0.999) hkR1.set(1, 0, 0); else hkR1.set(0, 1, 0).cross(hkDir).normalize();
+  hkR2.copy(hkDir).cross(hkR1);   // ergänzt zur Orthonormalbasis
+  const tc = Math.tan(HOOK.cone), d = new THREE.Vector3(), saved = hkDir.clone();
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4;
+    d.copy(saved).addScaledVector(hkR1, Math.cos(a) * tc).addScaledVector(hkR2, Math.sin(a) * tc).normalize();
+    const r = cast(d);
+    if (r && r.ledge) return r;
+  }
+  return centre;
+}
+function fireHook() {
+  if (state.mode !== 'play' || state.respawnT > 0 || !state.tools.hook) return;
+  if (hook.s === 'fest') { releaseHook(false); return; }
+  if (hook.s !== 'idle' || hook.cd > 0 || mantle.on) return;
+  const r = hookTarget();
+  if (!r) { sfx.empty(); hook.cd = 0.3; hook.flash = 0.2; return; }
+  hook.res = r; hook.s = 'fly'; hook.flyT = HOOK.flyT; sfx.hookThrow();
+}
+function attachHook() {
+  const r = hook.res;
+  hook.s = 'fest'; hook.anchor.copy(r.anchor); hook.ledge = r.ledge; hook.ceil = r.ceil;
+  hook.Lmin = r.ceil ? 0.02 : 0.012;
+  hkChest.set(state.pos.x, state.pos.y + 0.012, state.pos.z);
+  hook.L = hkChest.distanceTo(hook.anchor);
+  hook.retract = true; hook.progT = 0; hook.progD = hook.L; hook.blockT = 0;
+  if (glide.on) closeGlide();
+  state.gliding = false; sfx.hookHit();
+}
+function releaseHook(impulse) {
+  if (hook.s === 'idle') return;
+  hook.s = 'idle'; hook.cd = 0.6; hook.ledge = null; hook.res = null;
+  if (impulse) { state.vel.y += 0.45; state.onGround = false; }
+}
+function stepHooked(h, bvh) {
+  const p = state.pos, vel = state.vel, A = hook.anchor;
+  if (state.jumpQueued) { state.jumpQueued = false; state.jumpBuf = 0; releaseHook(true); return; }
+  hkChest.set(p.x, p.y + 0.012, p.z);
+  hkRel.copy(A).sub(hkChest);
+  let dist = hkRel.length();
+  if (dist > 1e-6) hkDir.copy(hkRel).divideScalar(dist); else hkDir.set(0, 1, 0);
+  const back = keys.has('KeyS') || keys.has('ArrowDown') || touchState.move.y > 0.6;
+  const fwdIn = keys.has('KeyW') || keys.has('ArrowUp') || touchState.move.y < -0.6;
+  if (back) { hook.L = Math.min(1.2, hook.L + HOOK.release * h); hook.retract = false; }
+  else {
+    if (fwdIn && !hook.retract) { hook.retract = true; hook.progT = 0; hook.progD = dist; }
+    if (hook.retract && hook.L > hook.Lmin) hook.L = Math.max(hook.Lmin, hook.L - HOOK.retract * h);
+  }
+  // Kein Fortschritt beim Einholen (Hindernis): Einholen stoppen, Seil bleibt so lang wie jetzt
+  if (hook.retract && hook.L > hook.Lmin) {
+    hook.progT += h;
+    if (hook.progT >= 0.5) { if (hook.progD - dist < 0.004) { hook.retract = false; hook.L = dist; } hook.progT = 0; hook.progD = dist; }
+  }
+  // Seil gerissen: Sicht zum Anker länger als 0,6 s blockiert
+  hkOld.copy(hkChest); hkRay.origin.copy(hkChest); hkRay.direction.copy(hkDir);
+  const los = dist > 0.01 ? bvh.raycastFirst(hkRay, THREE.DoubleSide, 0, dist) : null;
+  if (los && los.distance < dist - 0.006) hook.blockT += h; else hook.blockT = Math.max(0, hook.blockT - h);
+  if (hook.blockT > 0.6) { toast('Seil gerissen', '', 1.2); sfx.empty(); releaseHook(false); return; }
+  // Ankunft: Seil kurz genug
+  if (hook.L <= hook.Lmin + 1e-6 && dist <= hook.Lmin + 0.004) {
+    if (hook.ledge) { const t = hook.ledge.clone(); releaseHook(false); hook.cd = 0.3; startMantle(t); return; }
+    if (state.onGround) { releaseHook(false); return; }
+  } else if (state.onGround && !hook.retract) { releaseHook(false); return; }
+  // Physik: positionsbasiertes Pendel
+  vel.y -= P.gravity * h;
+  vel.multiplyScalar(Math.exp(-0.4 * h));
+  const ml = Math.hypot(move.x, move.z);
+  if (ml > 0.1) {
+    hkAcc.set(move.x, 0, move.z).multiplyScalar(HOOK.swing * h);
+    hkAcc.addScaledVector(hkDir, -hkAcc.dot(hkDir));
+    vel.add(hkAcc);
+  }
+  hkNew.copy(p).addScaledVector(vel, h);
+  hkRel.set(hkNew.x, hkNew.y + 0.012, hkNew.z).sub(A);
+  const d = hkRel.length();
+  if (d > hook.L) { hkRel.multiplyScalar(hook.L / d); hkNew.set(A.x + hkRel.x, A.y + hkRel.y - 0.012, A.z + hkRel.z); }
+  hkOld.copy(p);
+  hkDelta.copy(hkNew).sub(p);
+  moveBody(bvh, playerBody, hkDelta, moveMain);
+  vel.copy(p).sub(hkOld).divideScalar(h);
+  hkChest.set(p.x, p.y + 0.012, p.z);
+  hkRel.copy(hkChest).sub(A);
+  const d2 = hkRel.length();
+  if (d2 > 1e-6) { hkRel.divideScalar(d2); const vr = vel.dot(hkRel); if (vr > 0 && d2 >= hook.L - 0.0005) vel.addScaledVector(hkRel, -vr); }
+  const sp = vel.length(); if (sp > HOOK.maxVel) vel.multiplyScalar(HOOK.maxVel / sp);
+  state.onGround = probeGround(bvh, playerBody);
+  if (state.onGround) playerBody.supportY = p.y;
+  state.fallSpeed = 0;
+}
+// Fadenkreuz grün, wenn ein Anker in Reichweite ist (alle 0,1 s)
+function probeHook(dt) {
+  hook.probeT -= dt;
+  if (hook.probeT > 0) return;
+  hook.probeT = 0.1;
+  const ok = state.tools.hook && hook.s === 'idle' && !!hookTarget();
+  if (ok !== hook.valid) { hook.valid = ok; $('crosshair').classList.toggle('hookok', ok); }
+}
+
+// ---------- Gleiter ----------
+function groundWithin(bvh, d) {
+  hkRay.origin.set(state.pos.x, state.pos.y + 0.001, state.pos.z); hkRay.direction.set(0, -1, 0);
+  return !!bvh.raycastFirst(hkRay, THREE.DoubleSide, 0, d);
+}
+function openGlide(bvh) {
+  glide.on = true; glide.heading = state.yaw; glide.stallT = 0; glide.rate = 0;
+  glide.v = THREE.MathUtils.clamp(Math.hypot(state.vel.x, state.vel.z) + 0.4, 0.4, GLIDER.speed);
+  state.gliding = false; sfx.pick();
+}
+function closeGlide() {
+  if (!glide.on) return;
+  glide.on = false; glide.stallT = 0;
+  state.vel.x = -Math.sin(glide.heading) * glide.v * 0.3; state.vel.z = -Math.cos(glide.heading) * glide.v * 0.3;
+}
+const angDiff = (a, b) => { let d = (a - b) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+function stepGlide(h, bvh) {
+  const vel = state.vel;
+  const sp = Math.sin(state.pitch);
+  let vSoll = THREE.MathUtils.clamp(GLIDER.speed - 0.45 * sp, 0.2, 0.95);
+  let sink = GLIDER.sink + 0.6 * Math.max(0, -sp) - 0.25 * Math.max(0, sp) * THREE.MathUtils.clamp((glide.v - 0.30) / 0.25, 0, 1);
+  if (glide.stallT > 0) { glide.stallT -= h; sink = 0.7; vSoll = 0.5; }
+  else {
+    const turn = THREE.MathUtils.clamp(angDiff(state.yaw, glide.heading), -GLIDER.turn * h, GLIDER.turn * h);
+    glide.heading += turn;
+    glide.rate += (turn / h - glide.rate) * Math.min(1, 6 * h);
+  }
+  if (glide.stallT <= 0) glide.rate *= Math.exp(-3 * h);
+  glide.v += THREE.MathUtils.clamp(vSoll - glide.v, -0.6 * h, 0.6 * h);
+  if (glide.stallT <= 0 && glide.v < GLIDER.stallV) { glide.stallT = 0.5; sfx.stall(); }
+  const lift = updraftLift(state.pos);
+  const vyT = -sink + lift;
+  vel.y += (vyT - vel.y) * Math.min(1, (vel.y < vyT ? 14 : 4) * h);   // Schirm öffnet schnell, Steigen ist träger
+  const vx = -Math.sin(glide.heading) * glide.v, vz = -Math.cos(glide.heading) * glide.v;
+  hkDelta.set(vx * h, vel.y * h, vz * h);
+  moveBody(bvh, playerBody, hkDelta, moveMain);
+  vel.x = vx; vel.z = vz;
+  if (moveMain.hit) {
+    const pl = moveMain.pushed.length();
+    if (moveMain.gy > GROUND_NY && vel.y <= 0.02) {   // Landung
+      closeGlide(); state.onGround = true; vel.y = 0; playerBody.supportY = state.pos.y;
+      return;
+    }
+    if (pl > 0) {
+      hkRel.copy(moveMain.pushed).divideScalar(pl);
+      if (hkRel.y < -0.5 && vel.y > 0) vel.y = 0;
+      const hl = Math.hypot(hkRel.x, hkRel.z);
+      if (hl > 0.3) {
+        const nx = hkRel.x / hl, nz = hkRel.z / hl, into = vx * nx + vz * nz;
+        if (into < 0) {
+          const wx = vx - into * nx, wz = vz - into * nz;
+          glide.v = Math.hypot(wx, wz);
+          if (glide.v < 0.15) { closeGlide(); vel.x = vel.z = 0; }
+        }
+      }
+    }
+  }
+  state.fallSpeed = 0;
+}
+
 // Ein fester Physikschritt des Spielers (h = PHYS_DT)
 function stepPlayer(h) {
   const bvh = state.world.collider.geometry.boundsTree;
+  if (state.respawnT > 0) return;
   fwd.set(-Math.sin(state.yaw), 0, -Math.cos(state.yaw));
   right.set(-fwd.z, 0, fwd.x);
   move.set(0, 0, 0);
@@ -1489,17 +1773,41 @@ function stepPlayer(h) {
   if (keys.has('ArrowRight')) state.yaw -= 2.2 * h;
   if (touchState.move.lengthSq() > 0.01) { move.addScaledVector(fwd, -touchState.move.y).addScaledVector(right, touchState.move.x); }
   const ml = move.length(); if (ml > 1) move.divideScalar(ml);
-  const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight') || (isTouch && touchState.move.length() > 0.95);
+  const sprint = !state.carrying && (keys.has('ShiftLeft') || keys.has('ShiftRight') || (isTouch && touchState.move.length() > 0.95));
   const speed = sprint ? P.sprint : P.walk;
   const airControl = state.onGround ? 1 : 0.75;
   state.moving = ml > 0.1; state.sprinting = sprint;
+  hook.cd = Math.max(0, hook.cd - h); mantle.cd = Math.max(0, mantle.cd - h);
 
-  // Springen: Flanke aus jumpQueued; Gleiten: in der Luft, fallend, Leertaste gehalten
+  // aus der Welt gefallen (Loch im Scan)
+  if (state.pos.y < state.world.bounds.min.y - 0.4) {
+    resetMovers();
+    state.pos.copy(state.world.spawn); state.pos.y += 0.01; state.vel.set(0, 0, 0);
+    toast('Durch ein Loch gefallen', 'Zurück zum Startpunkt', 2);
+    return;
+  }
   if (state.jumpBuf > 0) { state.jumpBuf -= h; if (state.jumpBuf <= 0) state.jumpQueued = false; }
+  if (mantle.on) { stepMantle(h, bvh); return; }
+  if (hook.s === 'fly') { hook.flyT -= h; if (hook.flyT <= 0) attachHook(); }
+  if (hook.s === 'fest') { stepHooked(h, bvh); return; }
+  if (state.onGround) state.airT = 0; else state.airT += h;
+
+  // Kantengriff: Sprungtaste gehalten und Bewegung zur Wand
+  if ((!state.onGround || state.jumpQueued) && tryMantle(bvh)) return;
+  // Gleiter: Tipp in der Luft klappt auf und zu
+  if (state.tools.glider && state.jumpQueued && !state.onGround && state.airT >= 0.1) {
+    if (glide.on) closeGlide(); else if (!groundWithin(bvh, 0.03)) openGlide(bvh);
+    state.jumpQueued = false; state.jumpBuf = 0;
+  }
+  if (glide.on) { stepGlide(h, bvh); return; }
+
+  // Springen: Flanke aus jumpQueued; Schirm (ohne Gleiter): in der Luft, fallend, Leertaste gehalten
   if (state.jumpQueued && state.onGround) {
     state.vel.y = P.jump; state.onGround = false; state.jumpQueued = false; state.jumpBuf = 0;
   }
-  state.gliding = !state.onGround && state.vel.y < 0 && keys.has('Space');
+  const lift = updraftLift(state.pos) * 0.5;
+  state.gliding = !state.tools.glider && !state.onGround && keys.has('Space') && (state.vel.y < 0 || lift > 0);
+  if (state.gliding && lift > 0) state.vel.y = Math.max(state.vel.y, lift - P.glideTerminal + P.gravity * h);
   const term = state.gliding ? P.glideTerminal : P.terminal;
 
   hdv.set((move.x * speed * airControl + state.vel.x) * h, 0, (move.z * speed * airControl + state.vel.z) * h);
@@ -1507,22 +1815,39 @@ function stepPlayer(h) {
   stepBody(bvh, playerBody, hdv, h, term);
   if (!wasGround && state.onGround && vyBefore < -1.0) blip('sine', 120, 60, 0.08, 0.06);
   state.fallSpeed = -state.vel.y;
-
-  // aus der Welt gefallen (Loch im Scan)
-  if (state.pos.y < state.world.bounds.min.y - 0.4) {
-    state.pos.copy(state.world.spawn); state.pos.y += 0.01; state.vel.set(0, 0, 0);
-    toast('Durch ein Loch gefallen', 'Zurück zum Startpunkt', 2);
-  }
 }
 
 // Kamera, Kopfwippen, Waffe: einmal pro Bild
+const viewRay = new THREE.Ray(), camTmp = new THREE.Vector3(), camAim = new THREE.Vector3(), camDirV = new THREE.Vector3();
 function updateView(dt) {
   if (state.onGround && state.moving) state.bob += dt * (state.sprinting ? 16 : 11); else state.bob *= 0.9;
-  const bobY = Math.sin(state.bob) * 0.00025;
-  playCam.position.set(state.pos.x, state.pos.y + P.eye + bobY, state.pos.z);
-  playCam.rotation.set(state.pitch, state.yaw, 0, 'YXZ');
+  const bobY = state.view === 'fp' ? Math.sin(state.bob) * 0.00025 : 0;
+  // Gleiter: Rollen in die Kurve, Sichtfeld wächst mit der Fahrt, Waffe nach unten
+  const gl = glide.on;
+  const rollT = gl ? -THREE.MathUtils.clamp(glide.rate * 0.12, -0.35, 0.35) : 0;
+  glide.roll += (rollT - glide.roll) * Math.min(1, dt * 6);
+  const fovT = gl ? 78 + 8 * THREE.MathUtils.clamp((glide.v - 0.2) / 0.75, 0, 1) : 78;
+  glide.fov += (fovT - glide.fov) * Math.min(1, dt * 4);
+  if (Math.abs(playCam.fov - glide.fov) > 0.01) { playCam.fov = glide.fov; playCam.updateProjectionMatrix(); }
+  const shake = gl && glide.stallT > 0 ? (Math.random() - 0.5) * 0.02 : 0;
+  playCam.rotation.set(state.pitch + shake, state.yaw, glide.roll, 'YXZ');
+  if (state.view === 'fp') {
+    playCam.position.set(state.pos.x, state.pos.y + P.eye + bobY, state.pos.z);
+  } else {
+    // Verfolgerkamera: Schulterblick hinter der Figur, Kollision per Strahl gegen die BVH
+    const bvh = state.world.collider.geometry.boundsTree;
+    camDirV.set(0, 0, -1).applyEuler(playCam.rotation);
+    camAim.set(state.pos.x + Math.cos(state.yaw) * 0.007, state.pos.y + 0.0235, state.pos.z - Math.sin(state.yaw) * 0.007);
+    const want = state.camDist;
+    viewRay.origin.copy(camAim); viewRay.direction.copy(camDirV).negate();
+    const hit = bvh.raycastFirst(viewRay, THREE.DoubleSide, 0, want + 0.004);
+    const dist = hit ? Math.max(0.003, hit.distance - 0.004) : want;
+    playCam.position.copy(camAim).addScaledVector(viewRay.direction, dist);
+  }
+  const lowered = gl || mantle.on;
+  gun.visible = state.view === 'fp';
   gun.position.x = 0.0042 + Math.cos(state.bob * 0.5) * 0.00015;
-  gun.position.y = -0.0037 + Math.abs(Math.sin(state.bob * 0.5)) * 0.00012;
+  gun.position.y += ((lowered ? -0.0075 : -0.0037 + Math.abs(Math.sin(state.bob * 0.5)) * 0.00012) - gun.position.y) * Math.min(1, dt * 12);
   gun.position.z += (GUN_Z - gun.position.z) * Math.min(1, dt * 18);
 }
 
@@ -1546,79 +1871,8 @@ function stepPhysics(dt) {
   if (physAcc >= PHYS_DT) physAcc = 0;   // Rest verwerfen, statt in eine Spirale zu geraten
 }
 
-const eTo = new THREE.Vector3(), ePush = new THREE.Vector3();
-// Gegner-Verhalten (einmal pro Bild): Ziel, Sprünge, Trefferblitz, Angriff, Festhänger
-function stepEnemies(dt) {
-  const bvh = state.world.collider.geometry.boundsTree;
-  const playerCenter = state.pos.clone(); playerCenter.y += P.height / 2;
-  for (const e of [...enemies]) {
-    e.hitCd = Math.max(0, e.hitCd - dt);
-    e.flash = Math.max(0, e.flash - dt);
-    if (e.spawnT > 0) {
-      e.spawnT -= dt; e.mesh.scale.setScalar(Math.max(1e-6, e.r * (1 - Math.max(0, e.spawnT) / 0.6)));
-      e.sp = 0; e.dir.set(0, 0, 0); e.lastPos.copy(e.pos); e.anchor.copy(e.pos); e.anchorT = 0;
-      continue;
-    }
-    e.mesh.scale.setScalar(e.r);
-    const to = eTo.copy(playerCenter).sub(e.pos);
-    const dist = to.length();
-    e.dir.set(to.x, 0, to.z);
-    const chasing = dist < 2.5 && Math.abs(to.y) < 0.6;
-    if (chasing) e.dir.normalize();
-    else { e.wander += rand(-1, 1) * dt; e.dir.set(Math.cos(e.wander), 0, Math.sin(e.wander)); }
-    e.sp = e.speed * (chasing ? 1 : 0.4);
-    // Milben hüpfen, Fusseln rollen
-    if (e.onGround && e.kind === 'milbe' && Math.random() < dt * 1.5) { e.vel.y = 0.5; e.onGround = false; }
-    if (e.onGround && e.stuck > 0.6) { e.vel.y = 0.75; e.onGround = false; e.stuck = 0; e.wander += Math.PI * 0.6; }
-    const moved = e.pos.distanceTo(e.lastPos);
-    e.lastPos.copy(e.pos);
-    if (moved < e.sp * dt * 0.3) e.stuck += dt; else e.stuck = Math.max(0, e.stuck - dt);
 
-    if (e.pos.y < state.world.bounds.min.y - 0.4) { removeEnemy(e); continue; }
-    // länger als 10 s kaum bewegt (und nicht im Nahkampf): umsetzen, damit Wellen nicht festhängen
-    if (e.pos.distanceTo(e.anchor) > 0.03 || dist < 0.06) { e.anchor.copy(e.pos); e.anchorT = 0; }
-    else if ((e.anchorT += dt) > 10) {
-      const p = findWalkable(state.pos, 0.3, 1.2);
-      if (p) { e.pos.copy(p); e.pos.y += e.r + 0.002; e.vel.set(0, 0, 0); e.anchor.copy(e.pos); e.anchorT = 0; e.stuck = 0; }
-      else { removeEnemy(e); continue; }
-    }
-    // Darstellung
-    e.mesh.position.copy(e.pos);
-    e.mesh.rotation.y = chasing ? Math.atan2(-to.x, -to.z) : Math.atan2(-e.dir.x, -e.dir.z);
-    if (e.kind === 'fussel') e.mesh.children[0].rotation.x += e.sp * dt / e.r;
-    const f = e.flash > 0;
-    for (const m of e.mesh.userData.flashMats) m.emissive.setRGB(f ? 0.8 : 0, f ? 0.3 : 0, f ? 0.2 : 0);
-    // Angriff: der Rückstoß geht durch die Kollision, man wird nicht in Wände gedrückt
-    if (dist < e.r + P.radius + 0.004 + P.height * 0.3 && e.hitCd <= 0) {
-      e.hitCd = 0.9;
-      state.hp -= e.dmg; state.hurtFlash = 0.8; sfx.hurt();
-      ePush.copy(to).setY(0).normalize().multiplyScalar(0.003);
-      moveBody(bvh, playerBody, ePush, moveAux);
-      if (state.hp <= 0) die();
-    }
-  }
-  if (!enemies.length && state.wave > 0 && state.waveTimer <= 0) state.waveTimer = 3;
-}
 
-function die() {
-  setMode('dead');
-  $('pause-title').textContent = 'Plattgefusselt';
-  $('pause-text').textContent = `Du hast ${state.wave} ${state.wave === 1 ? 'Welle' : 'Wellen'} erreicht und ${state.score.toLocaleString('de-DE')} Punkte geholt.`;
-  $('btn-resume').hidden = true;
-}
-
-function stepCrumbs(dt) {
-  const pc = state.pos.clone(); pc.y += P.height * 0.3;
-  for (const c of [...crumbs]) {
-    c.t += dt; c.mesh.rotation.y += dt * 1.5;
-    c.mesh.position.y += Math.sin(c.t * 3) * 0.000004;
-    if (c.mesh.position.distanceTo(pc) < 0.012) {
-      scene.remove(c.mesh); crumbs.splice(crumbs.indexOf(c), 1);
-      state.hp = Math.min(100, state.hp + 20); sfx.pick();
-      toast('Keksbrösel! +20 Lebenskraft', '', 1.2);
-    }
-  }
-}
 
 function stepEffects(dt) {
   for (const f of [...effects]) {
@@ -1637,16 +1891,717 @@ function stepEffects(dt) {
   }
 }
 
+// ---------------- Gegner: Nester, Wachen, Streuner ----------------
+const ENEMY_R = { fussel: 0.0085, milbe: 0.0045 };
+function spawnEnemy(kind, at, opts = {}) {
+  const cfg = kind === 'fussel'
+    ? { r: ENEMY_R.fussel, hp: 3, speed: 0.045, dmg: 18, points: 100 }
+    : { r: ENEMY_R.milbe, hp: 1, speed: 0.1, dmg: 9, points: 60 };
+  const mesh = makeEnemyMesh(kind);
+  mesh.scale.setScalar(cfg.r);
+  scene.add(mesh);
+  const e = {
+    kind, ...cfg, maxHp: cfg.hp, mesh, pos: at.clone().add(new THREE.Vector3(0, cfg.r + 0.002, 0)), vel: new THREE.Vector3(),
+    onGround: false, y0: 0, y1: 0, canStep: false, supportY: at.y,
+    dir: new THREE.Vector3(), sp: 0, hitCd: 0, wander: Math.random() * 6.28, stuck: 0, lastPos: at.clone(),
+    anchor: at.clone(), anchorT: 0, flash: 0, spawnT: 0,
+    home: (opts.home || at).clone(), nest: opts.nest || null, stray: !!opts.stray, alarm: 0, returning: false,
+  };
+  e.mesh.position.copy(e.pos);
+  enemies.push(e);
+  return e;
+}
+
+function removeEnemy(e) {
+  scene.remove(e.mesh);
+  for (const m of e.mesh.userData.ownMaterials) m.dispose();   // Geometrien, Textur und Pupillen-Material sind geteilt
+  const i = enemies.indexOf(e);
+  if (i >= 0) enemies.splice(i, 1);
+}
+
+// Spawnpunkt, an dem auch die Kugel des Gegners (Radius r) frei steht; sonst null
+const spawnQ = new THREE.Vector3(), spawnC = new THREE.Vector3();
+function sphereFree(bvh, p, r) {
+  spawnQ.copy(p); spawnQ.y += r + 0.002;
+  resolveCapsule(bvh, spawnQ, spawnQ, r, spawnC);
+  return spawnC.length() <= 0.0005;
+}
+// Platz für eine Wache neben dem Nest
+function guardSpot(nest, kind) {
+  const bvh = state.world.collider.geometry.boundsTree;
+  for (let t = 0; t < 8; t++) {
+    const p = findWalkable(nest.pos, 0.05, 0.25, [-0.03, 0.03]);
+    if (p && sphereFree(bvh, p, ENEMY_R[kind])) return p;
+  }
+  return null;
+}
+const guardCount = nest => enemies.reduce((n, e) => n + (e.nest === nest ? 1 : 0), 0);
+// fill = true: Startwachen des Kapitels anlegen; sonst nur eine fehlende nachschieben
+function spawnGuards(nest, fill) {
+  const kinds = GUARDS[nest.chapter] || GUARDS[1];
+  const have = guardCount(nest);
+  const todo = fill ? kinds.slice(have) : kinds.slice(have, have + 1);
+  for (const k of todo) {
+    const p = guardSpot(nest, k);
+    if (!p) continue;
+    const e = spawnEnemy(k, p, { nest, home: nest.pos });
+    e.spawnT = fill ? 0.01 : 0.6;
+  }
+}
+function destroyNest(o, at) {
+  completeObjective(o);
+  addPuff(o.pos.clone().add(new THREE.Vector3(0, 0.01, 0)), 0xb6aebf, 40, 0.002, 0.12);
+  sfx.pop();
+  for (const e of [...enemies]) if (e.nest === o) { addPuff(e.pos, 0xb6aebf, 12, 0.0012, 0.06); removeEnemy(e); }
+  for (let i = 0; i < 3; i++) {
+    const p = findWalkable(o.pos, 0.01, 0.12, [-0.03, 0.03]) || o.pos;
+    spawnCrumb(p, i < 2 ? 'kruemel' : 'kissen');
+  }
+}
+
+// ---------------- Krümel und Nadelkissen ----------------
+const crumbGeo = new THREE.DodecahedronGeometry(0.003, 0);
+const crumbMat = new THREE.MeshStandardMaterial({ color: 0xd9a35a, roughness: 0.9, flatShading: true });
+const cushionGeo = new THREE.SphereGeometry(0.0038, 12, 8);
+const cushionMat = new THREE.MeshStandardMaterial({ color: 0xb8483c, roughness: 0.8 });
+const pinGeo = new THREE.CylinderGeometry(0.00022, 0.00022, 0.0055, 4), pinMat = new THREE.MeshStandardMaterial({ color: 0xf5f0d8, roughness: 0.3, metalness: 0.5 });
+function spawnCrumb(at, kind = 'kruemel') {
+  let m;
+  if (kind === 'kissen') {
+    m = new THREE.Mesh(cushionGeo, cushionMat);
+    m.scale.set(1, 0.7, 1);
+    for (let i = 0; i < 5; i++) { const pin = new THREE.Mesh(pinGeo, pinMat); const a = i * 1.26; pin.position.set(Math.cos(a) * 0.002, 0.0028, Math.sin(a) * 0.002); pin.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); m.add(pin); }
+    m.position.copy(at).add(new THREE.Vector3(0, 0.0035, 0));
+  } else {
+    m = new THREE.Mesh(crumbGeo, crumbMat);
+    m.position.copy(at).add(new THREE.Vector3(0, 0.004, 0));
+    m.scale.set(1, 0.7, 1.2);
+  }
+  m.castShadow = true;
+  scene.add(m);
+  crumbs.push({ mesh: m, t: Math.random() * 6, kind });
+}
+function stepCrumbs(dt) {
+  const pc = state.pos.clone(); pc.y += P.height * 0.3;
+  for (const c of [...crumbs]) {
+    c.t += dt; c.mesh.rotation.y += dt * 1.5;
+    c.mesh.position.y += Math.sin(c.t * 3) * 0.000004;
+    if (c.mesh.position.distanceTo(pc) < 0.012) {
+      if (c.kind === 'kissen') {
+        if (state.ammoRes >= 96) continue;
+        state.ammoRes = Math.min(96, state.ammoRes + 16); toast('Nadelkissen! +16 Nadeln', '', 1.2);
+      } else {
+        if (state.hp >= 100) continue;   // bleibt liegen, bis man sie braucht
+        state.hp = Math.min(100, state.hp + 20); toast('Keksbrösel! +20 Lebenskraft', '', 1.2);
+      }
+      scene.remove(c.mesh); crumbs.splice(crumbs.indexOf(c), 1);
+      sfx.pick();
+    }
+  }
+}
+
+// ---------------- Verhalten ----------------
+const eTo = new THREE.Vector3(), ePush = new THREE.Vector3(), eHome = new THREE.Vector3();
+function relocateHome(e) {
+  const p = findWalkable(e.home, 0.02, 0.25, [-0.03, 0.03]);
+  const q = p || e.home;
+  e.pos.copy(q); e.pos.y += e.r + 0.002; e.vel.set(0, 0, 0);
+  e.anchor.copy(e.pos); e.anchorT = 0; e.stuck = 0; e.returning = false; e.chase = false;
+}
+// Gegner-Verhalten (einmal pro Bild): Wachen patrouillieren um ihr Nest, Alarm bei Nähe oder Treffer, Sprünge, Angriff, Festhänger
+function stepEnemies(dt) {
+  const bvh = state.world.collider.geometry.boundsTree;
+  const playerCenter = state.pos.clone(); playerCenter.y += P.height / 2;
+  for (const e of [...enemies]) {
+    e.hitCd = Math.max(0, e.hitCd - dt);
+    e.flash = Math.max(0, e.flash - dt);
+    if (e.spawnT > 0) {
+      e.spawnT -= dt; e.mesh.scale.setScalar(Math.max(1e-6, e.r * (1 - Math.max(0, e.spawnT) / 0.6)));
+      e.sp = 0; e.dir.set(0, 0, 0); e.lastPos.copy(e.pos); e.anchor.copy(e.pos); e.anchorT = 0;
+      continue;
+    }
+    e.mesh.scale.setScalar(e.r);
+    const to = eTo.copy(playerCenter).sub(e.pos);
+    const dist = to.length();
+    e.alarm = Math.max(0, e.alarm - dt);
+    const dHome = e.pos.distanceTo(e.home);
+    if (dHome > 1.0 || e.pos.y < e.home.y - 0.35) { relocateHome(e); }
+    const near = dist < 0.6 && Math.abs(to.y) < 0.15 && state.respawnT <= 0;
+    const alert = near || e.alarm > 0;
+    let mode = 'patrol';
+    if (e.returning) { if (dHome < 0.12) e.returning = false; else mode = 'return'; }
+    if (!e.returning && alert) { if (dHome > 0.9) { e.returning = true; e.alarm = 0; mode = 'return'; } else mode = 'chase'; }
+    const chasing = mode === 'chase';
+    if (chasing) e.dir.set(to.x, 0, to.z).normalize();
+    else if (mode === 'return') e.dir.set(e.home.x - e.pos.x, 0, e.home.z - e.pos.z).normalize();
+    else {
+      e.wander += rand(-1, 1) * dt;
+      e.dir.set(Math.cos(e.wander), 0, Math.sin(e.wander));
+      if (dHome > 0.25) { eHome.set(e.home.x - e.pos.x, 0, e.home.z - e.pos.z).normalize(); e.dir.addScaledVector(eHome, 2).normalize(); }
+    }
+    e.sp = e.speed * (chasing ? 1 : mode === 'return' ? 0.8 : 0.4);
+    // Milben hüpfen, Fusseln rollen
+    if (e.onGround && e.kind === 'milbe' && Math.random() < dt * 1.5) { e.vel.y = 0.5; e.onGround = false; }
+    if (e.onGround && e.stuck > 0.6) { e.vel.y = 0.75; e.onGround = false; e.stuck = 0; e.wander += Math.PI * 0.6; }
+    const moved = e.pos.distanceTo(e.lastPos);
+    e.lastPos.copy(e.pos);
+    if (moved < e.sp * dt * 0.3) e.stuck += dt; else e.stuck = Math.max(0, e.stuck - dt);
+
+    // länger als 10 s kaum bewegt (und nicht im Nahkampf): zurück an den Heimatpunkt
+    if (e.pos.distanceTo(e.anchor) > 0.03 || dist < 0.06) { e.anchor.copy(e.pos); e.anchorT = 0; }
+    else if ((e.anchorT += dt) > 10) relocateHome(e);
+    // Darstellung
+    e.mesh.position.copy(e.pos);
+    e.mesh.rotation.y = chasing ? Math.atan2(-to.x, -to.z) : Math.atan2(-e.dir.x, -e.dir.z);
+    if (e.kind === 'fussel') e.mesh.children[0].rotation.x += e.sp * dt / e.r;
+    const f = e.flash > 0;
+    for (const m of e.mesh.userData.flashMats) m.emissive.setRGB(f ? 0.8 : 0, f ? 0.3 : 0, f ? 0.2 : 0);
+    // Angriff: der Rückstoß geht durch die Kollision, man wird nicht in Wände gedrückt
+    if (state.respawnT <= 0 && dist < e.r + P.radius + 0.004 + P.height * 0.3 && e.hitCd <= 0) {
+      e.hitCd = 0.9;
+      state.hp -= e.dmg; state.hurtFlash = 0.8; sfx.hurt();
+      ePush.copy(to).setY(0).normalize().multiplyScalar(0.003);
+      moveBody(bvh, playerBody, ePush, moveAux);
+      if (state.hp <= 0) die();
+    }
+  }
+  // Nachschub: solange das Nest lebt, alle 12 s eine Wache, wenn der Spieler 0,15 bis 1,5 m entfernt ist
+  for (const o of state.world.objectives || []) {
+    if (o.type !== 'nest' || o.done) continue;
+    const d = o.pos.distanceTo(state.pos);
+    if (guardCount(o) >= (GUARDS[o.chapter] || GUARDS[1]).length || d < 0.15 || d > 1.5) { o.resupT = 0; continue; }
+    if ((o.resupT += dt) >= 12) { o.resupT = 0; spawnGuards(o, false); }
+  }
+}
+
+// ---------------- Tod und Neustart im Lager ----------------
+function die() {
+  if (state.respawnT > 0) return;
+  state.deaths++; state.respawnT = 1.5; state.hp = 0;
+  releaseHook(false); resetMovers(); state.vel.set(0, 0, 0);
+  if (state.carrying) { state.carrying.mesh.visible = true; state.carrying = null; }
+  toast('Plattgefusselt', 'Zurück im Lager. Der Fortschritt bleibt.', 1.5);
+  saveProgress();
+}
+function respawn() {
+  const w = state.world;
+  state.respawnT = 0; state.hp = 100;
+  state.pos.copy(w.spawn); state.pos.y += 0.003; state.vel.set(0, 0, 0);
+  state.yaw = w.spawnYaw || 0; state.pitch = -0.05; state.onGround = false; physAcc = 0;
+  resetMovers();
+  for (const o of w.objectives) if (o.type === 'nest' && !o.done) spawnGuards(o, true);
+  for (const e of enemies) { e.returning = false; e.alarm = 0; }
+}
+function toLager() {
+  const w = state.world;
+  state.pos.copy(w.spawn); state.pos.y += 0.003; state.vel.set(0, 0, 0);
+  state.yaw = w.spawnYaw || 0; state.pitch = -0.05; state.onGround = false; physAcc = 0;
+  resetMovers();
+}
+
+// ---------------- Schießen ----------------
+function reload() {
+  if (state.reloading > 0 || state.ammo === state.mag || state.ammoRes <= 0) return;
+  state.reloading = 1.1; sfx.reload();
+}
+const raycaster = new THREE.Raycaster();
+const hsTmp = new THREE.Vector3(), hsSph = new THREE.Sphere();
+// Trefferprüfung eines Schusses: nächster Treffer aus Welt, Gegnern und Nestern
+function hitscan(origin, dir) {
+  ray.origin.copy(origin); ray.direction.copy(dir);
+  let best = Infinity, target = null, nest = null;
+  const wh = state.world.collider.geometry.boundsTree.raycastFirst(ray, THREE.DoubleSide);
+  if (wh) best = wh.distance;
+  for (const e of enemies) {
+    hsSph.set(e.pos, e.r * 1.15);
+    if (ray.intersectSphere(hsSph, hsTmp)) { const d = hsTmp.distanceTo(origin); if (d < best) { best = d; target = e; nest = null; } }
+  }
+  for (const o of state.world.objectives || []) {
+    if (o.type !== 'nest' || o.done) continue;
+    hsSph.center.set(o.pos.x, o.pos.y + 0.0115, o.pos.z); hsSph.radius = 0.0138;
+    if (ray.intersectSphere(hsSph, hsTmp)) { const d = hsTmp.distanceTo(origin); if (d < best) { best = d; nest = o; target = null; } }
+  }
+  return { best, target, nest, wall: !!wh };
+}
+function tryFire() {
+  if (state.mode !== 'play' || state.respawnT > 0 || state.fireCd > 0 || state.reloading > 0) return;
+  if (state.ammo <= 0) { sfx.empty(); reload(); state.fireCd = 0.25; return; }
+  state.ammo--; state.fireCd = 0.15;
+  sfx.shoot();
+  gun.position.z = GUN_Z + 0.0018; // Rückstoß
+  const origin = new THREE.Vector3(); playCam.getWorldPosition(origin);
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(playCam.quaternion);
+  dir.x += rand(-0.004, 0.004); dir.y += rand(-0.004, 0.004); dir.normalize();
+  if (state.view === 'tp') {
+    // Außenansicht: erst den Punkt unter dem Fadenkreuz bestimmen, dann aus der Figur dorthin schießen
+    const aim = hitscan(origin, dir);
+    const T = origin.clone().addScaledVector(dir, Math.min(aim.best, 8));
+    origin.copy(muzzleWorld());
+    dir.copy(T).sub(origin);
+    if (dir.lengthSq() < 1e-10) dir.set(0, 0, -1); else dir.normalize();
+  }
+  const res = hitscan(origin, dir);
+  const { target, nest } = res;
+  const end = origin.clone().addScaledVector(dir, Math.min(res.best, 8));
+  addTracer(muzzleWorld(), end);
+  const hitMark = () => { $('crosshair').classList.add('hit'); setTimeout(() => $('crosshair').classList.remove('hit'), 90); };
+  if (target) {
+    target.hp--; target.flash = 0.12; sfx.hit(); target.alarm = 6;
+    target.vel.x += dir.x * 0.15; target.vel.z += dir.z * 0.15; target.vel.y += 0.25; target.onGround = false;
+    hitMark();
+    addPuff(end, target.kind === 'fussel' ? 0xcfc8d6 : 0xe86a6a, 8, 0.0008, 0.04);
+    if (target.hp <= 0) {
+      state.score += target.points;
+      addPuff(target.pos, target.kind === 'fussel' ? 0xb6aebf : 0xc0473d, 30, 0.0015, 0.09);
+      sfx.pop();
+      if (Math.random() < 0.3) spawnCrumb(target.pos.clone().add(new THREE.Vector3(0, -target.r, 0)));
+      removeEnemy(target);
+    }
+  } else if (nest) {
+    nest.hp--; nest.flash = 0.12; sfx.hit(); hitMark();
+    addPuff(end, 0xcfc8d6, 8, 0.0008, 0.04);
+    for (const e of enemies) if (e.nest === nest) e.alarm = 6;
+    if (nest.hp <= 0) destroyNest(nest);
+  } else if (res.wall) {
+    addPuff(end, 0xfff1b0, 6, 0.0006, 0.03);
+  }
+}
+
+// ---------------- Ziele, Kapitel, Fortschritt ----------------
+const CHAPTER_TITLES = ['Bodenland', 'Möbelgebirge', 'Gipfel'];
+const GUARDS = { 1: ['fussel', 'fussel'], 2: ['fussel', 'fussel', 'milbe', 'milbe'], 3: ['fussel', 'fussel', 'fussel', 'milbe', 'milbe', 'milbe'] };
+const COUNTED = new Set(['splitter', 'nest', 'fund', 'leuchtfeuer']);
+// Demo-Zimmer: feste Ziele (x, y = Oberkante der Fläche, z). N1/W1 teilen sich die Stelle: der Haken erscheint dort, wo das Nest war.
+const DEMO_OBJECTIVES = [
+  { id: 'S1', type: 'splitter', chapter: 1, pos: [0.60, 0.003, 0.80], label: 'Splitter auf dem Teppich' },
+  { id: 'S2', type: 'splitter', chapter: 1, pos: [0.43, 0.083, 0.27], label: 'Splitter auf dem Klotz' },
+  { id: 'S3', type: 'splitter', chapter: 1, pos: [-1.75, 0, -1.20], label: 'Splitter unterm Bett' },
+  { id: 'N1', type: 'nest', chapter: 1, pos: [-0.30, 0, -0.50], label: 'Nest auf freiem Boden' },
+  { id: 'W1', type: 'werkzeug', tool: 'hook', chapter: 1, pos: [-0.30, 0, -0.50], label: 'Enterhaken' },
+  { id: 'S4', type: 'splitter', chapter: 2, pos: [-1.60, 0.12, -0.30], label: 'Splitter auf dem Schuhkarton' },
+  { id: 'S5', type: 'splitter', chapter: 2, pos: [0.70, 0.47, -1.00], label: 'Splitter auf dem Stuhl' },
+  { id: 'S8', type: 'splitter', chapter: 2, pos: [-1.50, 0.65, -1.50], label: 'Splitter auf dem Kissen' },
+  { id: 'N2', type: 'nest', chapter: 2, pos: [-1.50, 0.59, -0.80], label: 'Nest auf der Matratze' },
+  { id: 'W2', type: 'werkzeug', tool: 'glider', chapter: 2, pos: [0.80, 0.75, -1.50], label: 'Gleiter' },
+  { id: 'S6', type: 'splitter', chapter: 3, pos: [1.20, 0.766, -1.45], label: 'Splitter auf dem Laptop' },
+  { id: 'S7', type: 'splitter', chapter: 3, pos: [0.60, 1.07, -1.71], label: 'Splitter am Fensterbrett' },
+  { id: 'N3', type: 'nest', chapter: 3, pos: [1.35, 0.75, -1.20], label: 'Nest auf dem Tisch' },
+  { id: 'F1', type: 'fund', chapter: 3, pos: [1.73, 1.225, -0.25], label: 'Ohrstecker im Regal' },
+  { id: 'L', type: 'lager', chapter: 3, pos: null, label: 'Lager', required: false },
+  { id: 'G', type: 'leuchtfeuer', chapter: 3, pos: [1.86, 2.005, 0.15], label: 'Leuchtfeuer' },
+];
+const DEMO_UPDRAFTS = [
+  { x: 1.36, z: -1.42, r: 0.30, y0: 0.77, y1: 2.25, lift: 0.75 },   // Lampe
+  { x: 1.20, z: -1.50, r: 0.18, y0: 0.77, y1: 1.20, lift: 0.30 },   // Laptop
+  { x: 0.10, z: 0.60, r: 0.25, y0: 0.0, y1: 0.60, lift: 0.28 },     // Sonnenfleck auf dem Teppich
+];
+const DEMO_STRAYS = [[0.9, 0, -0.1], [-0.6, 0, 1.0], [1.3, 0, 0.9], [-1.0, 0, -1.55], [0.1, 0, -0.9], [-0.3, 0, 1.4]];
+
+const hashStr = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+const seedFrom = s => (hashStr(s) % 2147483646) + 1;
+
+function roomIdFor(w) {
+  if (w.kind === 'demo') return 'demo';
+  const b = w.bounds, mm = v => Math.round(v * 1000);
+  const idx = w.collider.geometry.index;
+  const tris = idx ? idx.count / 3 : 0;
+  return `${calib.file}|${Math.round(tris)}|${mm(b.max.x - b.min.x)}x${mm(b.max.y - b.min.y)}x${mm(b.max.z - b.min.z)}`;
+}
+
+// ---------- Fortschritt (localStorage, alles in try/catch) ----------
+const saveKey = id => 'winzling.v1.' + id;
+function loadProgress(id) {
+  try {
+    const t = localStorage.getItem(saveKey(id));
+    if (!t) return null;
+    const o = JSON.parse(t);
+    return o && o.v === 1 && Array.isArray(o.done) ? o : null;
+  } catch { return null; }
+}
+function writeProgress(id, o) { try { localStorage.setItem(saveKey(id), JSON.stringify(o)); } catch { /* blockiert: Spiel läuft ohne Speichern */ } }
+function saveProgress() {
+  const w = state.world;
+  if (!w || !w.roomId || !w.objectives) return;
+  const prev = loadProgress(w.roomId);
+  writeProgress(w.roomId, {
+    v: 1, done: w.objectives.filter(o => o.done).map(o => o.id), chapter: state.chapter, tools: { hook: state.tools.hook, glider: state.tools.glider },
+    ammoReserve: state.ammoRes, time: Math.round(state.time * 10) / 10, deaths: state.deaths, best: state.best || prev?.best || 0, won: state.won || state.free,
+  });
+}
+function refreshMenuSave() {
+  const sv = loadProgress('demo'), btn = $('btn-demo');
+  const total = DEMO_OBJECTIVES.filter(o => COUNTED.has(o.type)).length;
+  const n = sv ? sv.done.filter(id => COUNTED.has(DEMO_OBJECTIVES.find(o => o.id === id)?.type)).length : 0;
+  btn.textContent = n > 0 ? `Weiter (${n}/${total})` : 'Im Demo-Zimmer spielen';
+  $('btn-new').hidden = !(sv && sv.done.length > 0);
+}
+
+// ---------- Aufbau ----------
+const objGroup = new THREE.Group();
+scene.add(objGroup);
+const glowTex = canvasTex(64, 64, g => {
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.4)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+});
+glowTex.wrapS = glowTex.wrapT = THREE.ClampToEdgeWrapping;
+function glowSprite(color, size, opacity = 1) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity }));
+  s.scale.setScalar(size);
+  return s;
+}
+const octaGeo = new THREE.OctahedronGeometry(0.0028);
+const earGeo = new THREE.SphereGeometry(0.0022, 12, 8), ringGeoSm = new THREE.TorusGeometry(0.0032, 0.0006, 6, 16);
+function makeObjectiveMesh(o) {
+  const g = new THREE.Group();
+  g.userData.parts = {};
+  const p = g.userData.parts;
+  if (o.type === 'splitter') {
+    p.core = new THREE.Mesh(octaGeo, new THREE.MeshStandardMaterial({ color: 0xffd35a, emissive: 0xffa820, emissiveIntensity: 1.8, roughness: 0.2, metalness: 0.3, flatShading: true }));
+    p.glow = glowSprite(0xffc34a, 0.016);
+    g.add(p.core, p.glow);
+    g.position.set(o.pos.x, o.pos.y + 0.0065, o.pos.z);
+  } else if (o.type === 'nest') {
+    p.mat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: fuzzTex, roughness: 1, flatShading: true, emissive: 0x000000 });
+    p.core = new THREE.Mesh(fuzzGeo, p.mat); p.core.scale.setScalar(0.012); p.core.castShadow = true;
+    const hairs = new THREE.LineSegments(hairGeo, hairMat); hairs.scale.setScalar(0.012);
+    p.glow = glowSprite(0xc04050, 0.05, 0.35);
+    g.add(p.core, hairs, p.glow);
+    p.hairs = hairs;
+    g.position.set(o.pos.x, o.pos.y + 0.0115, o.pos.z);
+  } else if (o.type === 'fund') {
+    p.core = new THREE.Group();
+    p.core.add(new THREE.Mesh(earGeo, new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.15, metalness: 0.1, emissive: 0x666050 })));
+    const ring = new THREE.Mesh(ringGeoSm, new THREE.MeshStandardMaterial({ color: 0xe8c050, metalness: 0.9, roughness: 0.25, emissive: 0x6a4a10 }));
+    ring.position.y = 0.0028; p.core.add(ring);
+    p.glow = glowSprite(0xfff0c0, 0.018);
+    g.add(p.core, p.glow);
+    g.position.set(o.pos.x, o.pos.y + 0.0055, o.pos.z);
+  } else if (o.type === 'lager') {
+    const rg = new THREE.RingGeometry(0.024, 0.03, 32); rg.rotateX(-Math.PI / 2);
+    p.core = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0x5fc9a8, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+    g.add(p.core);
+    g.position.set(o.pos.x, o.pos.y + 0.0015, o.pos.z);
+  } else if (o.type === 'werkzeug') {
+    p.core = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x9fe8d0, emissive: 0x2a8a6a, emissiveIntensity: 1.2, roughness: 0.3, metalness: 0.5 });
+    if (o.tool === 'hook') {
+      const t = new THREE.Mesh(new THREE.TorusGeometry(0.0035, 0.0008, 6, 14, Math.PI * 1.4), mat); t.rotation.z = Math.PI * 0.8;
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.0011, 0.0035, 8), mat); c.position.set(0, 0.0045, 0);
+      p.core.add(t, c);
+    } else {
+      const d = new THREE.Mesh(new THREE.SphereGeometry(0.0045, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat); d.position.y = 0.002;
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.0004, 0.0004, 0.005, 6), mat); st.position.y = -0.0005;
+      p.core.add(d, st);
+    }
+    p.glow = glowSprite(0x7dffd0, 0.03);
+    g.add(p.core, p.glow);
+    g.position.set(o.pos.x, o.pos.y + 0.008, o.pos.z);
+  } else if (o.type === 'leuchtfeuer') {
+    p.matStick = new THREE.MeshStandardMaterial({ color: 0xd8b878, roughness: 0.7 });
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.0012, 0.0012, 0.03, 6), p.matStick); stick.position.y = 0.015;
+    p.matHead = new THREE.MeshStandardMaterial({ color: 0x151311, roughness: 0.6, emissive: 0x000000 });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.0035, 10, 8), p.matHead); head.position.y = 0.0315;
+    p.glow = glowSprite(0xff9a30, 0.12, 0); p.glow.position.y = 0.034;
+    p.core = head;
+    g.add(stick, head, p.glow);
+    g.position.set(o.pos.x, o.pos.y, o.pos.z);
+  }
+  g.traverse(c => { if (c.isMesh) { c.castShadow = false; } });
+  objGroup.add(g);
+  return g;
+}
+function disposeObjectives() {
+  const w = state.world;
+  for (const c of [...objGroup.children]) {
+    objGroup.remove(c);
+    c.traverse(o => { if ((o.isMesh || o.isSprite || o.isLine) && o.material && o.material !== hairMat) o.material.dispose(); });
+  }
+  if (w) { w.objectives = null; w.updrafts = null; }
+}
+const objDone = id => state.world.objectives.find(o => o.id === id)?.done;
+function chapterOpen(c) { return state.world.objectives.filter(o => o.chapter === c && o.required && !o.done && o.type !== 'lager'); }
+function toolReady(o) { return state.world.objectives.every(x => x === o || x.chapter !== o.chapter || !x.required || x.done || x.type === 'lager' || x.type === 'leuchtfeuer'); }
+function recomputeChapter(announce = false) {
+  const w = state.world;
+  let c = 3;
+  for (let i = 1; i <= 3; i++) if (chapterOpen(i).length) { c = i; break; }
+  if (announce && c !== state.chapter && c > state.chapter) {
+    toast(`Kapitel ${c} · ${CHAPTER_TITLES[c - 1]}`, c === 2 ? 'Mit dem Enterhaken (E) wird das Möbelgebirge begehbar.' : 'Der Gleiter trägt dich: Leertaste in der Luft.', 3.5);
+  }
+  state.chapter = c;
+}
+function completeObjective(o, silent = false) {
+  if (o.done) return;
+  o.done = true;
+  if (o.mesh) o.mesh.visible = false;
+  if (o.type === 'werkzeug') state.tools[o.tool] = true;
+  if (o.type === 'fund') state.carrying = null;
+  if (silent) return;
+  sfx.goal();
+  if (o.type === 'splitter') { state.score += 200; toast('Glitzersplitter!', `${splitterCount().done} von ${splitterCount().total}`, 1.6); }
+  else if (o.type === 'nest') { state.score += 500; toast('Nest zerstört', '', 1.6); }
+  else if (o.type === 'fund') { state.score += 300; toast('Ohrstecker im Lager', 'Geschafft.', 2); }
+  else if (o.type === 'werkzeug') toast(o.tool === 'hook' ? 'Enterhaken erhalten' : 'Gleiter erhalten', o.tool === 'hook' ? 'E oder rechte Maustaste wirft den Haken.' : 'Leertaste in der Luft klappt ihn auf und zu.', 3.5);
+  recomputeChapter(true);
+  saveProgress();
+}
+const splitterCount = () => { const l = state.world.objectives.filter(o => o.type === 'splitter'); return { done: l.filter(o => o.done).length, total: l.length }; };
+
+// Ziele, Streuner, Pickups und Nester-Wachen anlegen. sv = gespeicherter Fortschritt oder null
+function initObjectives(w, sv) {
+  disposeObjectives();
+  const gen = buildObjectives(w);
+  w.objectives = gen.objectives; w.updrafts = gen.updrafts;
+  state.tools.hook = !!sv?.tools?.hook; state.tools.glider = !!sv?.tools?.glider;
+  for (const o of w.objectives) {
+    o.done = false;
+    o.hp = o.type === 'nest' ? 8 : 0;
+    o.resupT = 0;
+    if (o.pos) o.mesh = makeObjectiveMesh(o);
+    if (sv && sv.done.includes(o.id)) completeObjective(o, true);
+  }
+  for (const o of w.objectives) if (o.type === 'werkzeug' && o.done) state.tools[o.tool] = true;
+  state.carrying = null;
+  recomputeChapter();
+  updateObjectiveVisibility();
+  for (const o of w.objectives) if (o.type === 'nest' && !o.done) spawnGuards(o, true);
+  for (const s of gen.strays) { const e = spawnEnemy('milbe', s, { stray: true }); e.spawnT = 0; }
+  for (const pk of gen.pickups) spawnCrumb(pk.pos, pk.kind);
+}
+function updateObjectiveVisibility() {
+  for (const o of state.world.objectives) {
+    if (!o.mesh || o.done) continue;
+    if (o.type === 'werkzeug') o.mesh.visible = toolReady(o);
+    else if (o.type === 'fund') o.mesh.visible = !state.carrying;
+    else if (o.type === 'lager') o.mesh.visible = !!state.carrying || o.chapter <= state.chapter;
+    else o.mesh.visible = true;
+  }
+}
+
+// ---------- Demo-Ziele prüfen ----------
+function demoObjectives(w) {
+  const bvh = w.collider.geometry.boundsTree;
+  const rng = seeded(seedFrom('demo-fix'));
+  const objectives = DEMO_OBJECTIVES.map(d => {
+    const o = { ...d, required: d.required !== false };
+    o.pos = d.pos ? new THREE.Vector3(...d.pos) : w.spawn.clone();
+    if (d.type === 'lager') o.pos.copy(w.spawn);
+    const ok = hasClearance(bvh, o.pos) && (o.type !== 'nest' || sphereFree(bvh, o.pos, 0.012));
+    if (!ok) {
+      const q = findWalkable(o.pos, 0, 0.05, [-0.02, 0.02], P.radius, rng);
+      if (q) { console.warn(`Ziel ${o.id}: Position nachgerückt`, o.pos.toArray(), '→', q.toArray()); o.pos.copy(q); }
+      else console.warn(`Ziel ${o.id}: keine freie Position gefunden`, o.pos.toArray());
+    }
+    return o;
+  });
+  // Werkzeug W1 liegt dort, wo Nest N1 war
+  const n1 = objectives.find(o => o.id === 'N1'), w1 = objectives.find(o => o.id === 'W1');
+  if (n1 && w1) w1.pos.copy(n1.pos);
+  const strays = DEMO_STRAYS.map(p => {
+    const q = findWalkable(new THREE.Vector3(...p), 0, 0.1, [-0.05, 0.05], ENEMY_R.milbe, rng);
+    return q || new THREE.Vector3(...p);
+  });
+  return { objectives, updrafts: DEMO_UPDRAFTS.map(u => ({ ...u })), strays, pickups: scatterPickups(w, objectives, rng) };
+}
+// je Kapitel 3 Krümel und 2 Nadelkissen in der Nähe der Kapitelziele
+function scatterPickups(w, objectives, rng) {
+  const out = [];
+  for (let c = 1; c <= 3; c++) {
+    const anchors = objectives.filter(o => o.chapter === c && o.pos && (o.type === 'splitter' || o.type === 'nest'));
+    if (!anchors.length) continue;
+    for (let i = 0; i < 5; i++) {
+      const a = anchors[i % anchors.length];
+      const p = findWalkable(a.pos, 0.04, 0.22, [-0.03, 0.03], P.radius, rng);
+      if (p) out.push({ kind: i < 3 ? 'kruemel' : 'kissen', pos: p });
+    }
+  }
+  return out;
+}
+function buildObjectives(w) {
+  return w.kind === 'demo' ? demoObjectives(w) : generateScanObjectives(w);
+}
+
+// ---------- Schritt ----------
+let hintT = 0;
+const objPc = new THREE.Vector3();
+function stepObjectives(dt) {
+  const w = state.world;
+  if (!w.objectives) return;
+  state.time += dt;
+  hintT = Math.max(0, hintT - dt);
+  objPc.set(state.pos.x, state.pos.y + P.height * 0.3, state.pos.z);
+  const t = state.time;
+  updateObjectiveVisibility();
+  for (const o of w.objectives) {
+    if (o.done || !o.mesh) continue;
+    const p = o.mesh.userData.parts, m = o.mesh;
+    if (!m.visible) continue;
+    if (o.type === 'splitter') {
+      p.core.rotation.y += dt * 2.2; p.core.rotation.x = 0.4;
+      m.position.y = o.pos.y + 0.0065 + Math.sin(t * 2 + o.pos.x * 7) * 0.0006;
+      p.glow.material.opacity = 0.65 + 0.35 * Math.sin(t * 9 + o.pos.z * 13) * Math.sin(t * 5.3 + o.pos.x * 3);
+    } else if (o.type === 'nest') {
+      const k = 1 + 0.08 * Math.sin(t * 5 + o.pos.x * 3);
+      p.core.scale.setScalar(0.012 * k); p.hairs.scale.setScalar(0.012 * k);
+      p.glow.material.opacity = 0.25 + 0.15 * Math.sin(t * 5 + o.pos.x * 3);
+      p.mat.emissive.setRGB(o.flash > 0 ? 0.8 : 0, o.flash > 0 ? 0.3 : 0, o.flash > 0 ? 0.2 : 0);
+      o.flash = Math.max(0, (o.flash || 0) - dt);
+      continue;
+    } else if (o.type === 'fund' || o.type === 'werkzeug') {
+      p.core.rotation.y += dt * 1.8; m.position.y = o.pos.y + (o.type === 'fund' ? 0.0055 : 0.008) + Math.sin(t * 2.5) * 0.0008;
+      p.glow.material.opacity = 0.7 + 0.3 * Math.sin(t * 6);
+    } else if (o.type === 'lager') {
+      p.core.material.opacity = 0.5 + 0.3 * Math.sin(t * 3);
+    } else if (o.type === 'leuchtfeuer') {
+      const lit = state.chapter >= 3;
+      p.matHead.color.setHex(lit ? 0xd03a18 : 0x151311);
+      p.matHead.emissive.setHex(lit ? 0xff5a18 : 0x000000);
+      p.matHead.emissiveIntensity = lit ? 1.5 + 0.5 * Math.sin(t * 11) : 0;
+      p.glow.material.opacity = lit ? 0.55 + 0.25 * Math.sin(t * 9) * Math.sin(t * 4.1) : 0;
+    }
+    // Einsammeln
+    const dx = objPc.x - o.pos.x, dz = objPc.z - o.pos.z;
+    if (o.type === 'splitter' || o.type === 'werkzeug' || o.type === 'fund') {
+      const dy = objPc.y - (o.pos.y + (o.type === 'splitter' ? 0.0065 : 0.006));
+      if (dx * dx + dy * dy + dz * dz < 0.012 * 0.012) {
+        if (o.type === 'fund') { state.carrying = o; o.mesh.visible = false; sfx.pick(); toast('Ohrstecker gefunden', 'Bring ihn zurück ins Lager. Du kannst nicht rennen.', 3); }
+        else completeObjective(o);
+      }
+    } else if (o.type === 'leuchtfeuer') {
+      const dy = objPc.y - (o.pos.y + 0.01);
+      if (dx * dx + dy * dy + dz * dz < 0.05 * 0.05) {
+        if (w.objectives.every(x => x === o || !x.required || x.done)) winGame(o);
+        else if (hintT <= 0) { toast('Das Leuchtfeuer wartet', 'Erledige zuerst die anderen Ziele.', 2.5); hintT = 5; }
+      }
+    }
+  }
+  const lager = w.objectives.find(o => o.type === 'lager');
+  if (state.carrying && lager) {
+    const dx = objPc.x - lager.pos.x, dz = objPc.z - lager.pos.z;
+    if (dx * dx + dz * dz < 0.03 * 0.03 && Math.abs(objPc.y - lager.pos.y) < 0.05) { lager.done = false; completeObjective(state.carrying); }
+  }
+}
+
+function winGame(o) {
+  o.done = true;
+  state.won = true;
+  if (!state.best || state.time < state.best) state.best = state.time;
+  sfx.goal();
+  const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  const sc = splitterCount();
+  const rows = [['Spielzeit', mmss(state.time)], ['Splitter', `${sc.done} / ${sc.total}`], ['Tode', String(state.deaths)], ['Bestzeit', mmss(state.best)]];
+  const dl = $('win-stats'); dl.textContent = '';
+  for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
+  saveProgress();
+  setMode('won');
+}
+
+// ---------- Zielanzeige ----------
+function trackList() {
+  const w = state.world;
+  if (!w.objectives) return [];
+  const l = [];
+  if (state.carrying) { const lg = w.objectives.find(o => o.type === 'lager'); if (lg) l.push(lg); return l; }
+  for (const o of w.objectives) {
+    if (o.done || !o.required || o.chapter !== state.chapter || !o.pos) continue;
+    if (o.type === 'werkzeug' && !toolReady(o)) continue;
+    l.push(o);
+  }
+  return l;
+}
+let lastGoalKey = '';
+function updateGoalHud() {
+  const w = state.world;
+  if (!w.objectives) return;
+  const c = state.chapter;
+  const lines = [];
+  const mine = w.objectives.filter(o => o.chapter === c && o.required && o.type !== 'lager');
+  const spl = mine.filter(o => o.type === 'splitter');
+  if (spl.length) lines.push([`Glitzersplitter ${spl.filter(o => o.done).length}/${spl.length}`, spl.every(o => o.done)]);
+  for (const o of mine) {
+    if (o.type === 'nest') lines.push([o.done ? 'Nest zerstört' : 'Fusselnest zerstören', o.done]);
+    else if (o.type === 'fund') lines.push([state.carrying ? 'Ohrstecker ins Lager bringen' : o.done ? 'Ohrstecker im Lager' : 'Ohrstecker im Regal finden', o.done]);
+    else if (o.type === 'werkzeug') lines.push([(o.tool === 'hook' ? 'Enterhaken' : 'Gleiter') + (o.done ? ' erhalten' : toolReady(o) ? ' holen' : ' (nach den Zielen)'), o.done]);
+    else if (o.type === 'leuchtfeuer') lines.push(['Leuchtfeuer entzünden', o.done]);
+  }
+  const trk = trackList();
+  const cur = trk.length ? trk[state.track % trk.length] : null;
+  const sc = splitterCount();
+  const key = c + '|' + lines.map(l => l[0] + l[1]).join(';') + '|' + (cur ? cur.id : '') + '|' + sc.done;
+  if (key === lastGoalKey) return;
+  lastGoalKey = key;
+  $('wave-line').textContent = `Kapitel ${c} · ${CHAPTER_TITLES[c - 1]}`;
+  const ul = $('goal-list'); ul.textContent = '';
+  for (const [txt, done] of lines.slice(0, 4)) { const li = document.createElement('li'); li.textContent = (done ? '✓ ' : '· ') + txt; if (done) li.className = 'done'; ul.appendChild(li); }
+  $('split-line').textContent = `Splitter ${sc.done}/${sc.total}`;
+}
+const gmV = new THREE.Vector3();
+function updateGoalArrow() {
+  const trk = trackList();
+  const mk = $('goal-marker'), ed = $('goal-edge');
+  if (!trk.length || state.mode !== 'play') { mk.hidden = true; ed.hidden = true; return; }
+  const o = trk[state.track % trk.length];
+  gmV.set(o.pos.x, o.pos.y + 0.01, o.pos.z);
+  const eye = activeCam.position;
+  const d = gmV.distanceTo(eye), dy = gmV.y - state.pos.y - P.eye;
+  const txt = d < 1 ? `${Math.round(d * 100)} cm` : `${fmt(d, 1)} m`;
+  gmV.project(activeCam);
+  const W = innerWidth, H = innerHeight;
+  const onScreen = gmV.z < 1 && Math.abs(gmV.x) < 0.94 && Math.abs(gmV.y) < 0.9;
+  if (onScreen) {
+    mk.hidden = false; ed.hidden = true;
+    mk.style.transform = `translate(${(gmV.x * 0.5 + 0.5) * W}px, ${(-gmV.y * 0.5 + 0.5) * H}px) translate(-50%, -50%)`;
+    $('goal-dist').textContent = txt;
+  } else {
+    mk.hidden = true; ed.hidden = false;
+    let x = gmV.x, y = gmV.y;
+    if (gmV.z > 1) { x = -x; y = -y; }
+    const l = Math.max(Math.abs(x) / 0.88, Math.abs(y) / 0.8, 1e-6);
+    x /= l; y /= l;
+    ed.style.transform = `translate(${(x * 0.5 + 0.5) * W}px, ${(-y * 0.5 + 0.5) * H}px) translate(-50%, -50%)`;
+    $('goal-edge-arrow').style.transform = `rotate(${Math.atan2(-y, x)}rad)`;
+    $('goal-edge-txt').textContent = `${Math.abs(dy) > 0.05 ? (dy > 0 ? '▲' : '▼') + ' ' : ''}${txt}`;
+  }
+}
+
+// ---------- Werkzeugleiste ----------
+function updateTools() {
+  const th = $('tool-hook'), tg = $('tool-glide');
+  th.classList.toggle('locked', !state.tools.hook);
+  th.classList.toggle('on', hook.s === 'fest' || hook.s === 'fly');
+  th.classList.toggle('ready', hook.valid && hook.s === 'idle');
+  $('hook-cd').style.transform = `scaleX(${hook.s === 'idle' ? 1 - Math.min(1, hook.cd / 0.6) : 1})`;
+  const hasG = state.tools.glider;
+  tg.classList.toggle('on', glide.on || state.gliding);
+  tg.classList.toggle('stall', glide.on && glide.stallT > 0);
+  tg.classList.toggle('locked', false);
+  $('glide-txt').textContent = glide.on && glide.stallT > 0 ? 'Abriss!' : hasG ? 'Gleiter' : 'Schirm';
+  $('t-hook').classList.toggle('off', !state.tools.hook);
+  $('t-glide').classList.toggle('off', !hasG);
+  $('glider-ribs').classList.toggle('show', glide.on && state.view === 'fp');
+}
+
+// (Platzhalter: Scan-Generator folgt)
+function generateScanObjectives(w) { return { objectives: [], updrafts: [], strays: [], pickups: [] }; }
+function toggleView() { state.view = state.view === 'fp' ? 'tp' : 'fp'; }
+
 // ---------------- Hauptschleife ----------------
 // Ein Spielbild: Waffe, feste Physikschritte, Gegner, Krümel, Wellen, Anzeige
 function simulate(dt) {
   state.fireCd = Math.max(0, state.fireCd - dt);
-  if (state.reloading > 0) { state.reloading -= dt; if (state.reloading <= 0) { state.reloading = 0; state.ammo = state.mag; } }
+  if (state.reloading > 0) {
+    state.reloading -= dt;
+    if (state.reloading <= 0) { state.reloading = 0; const take = Math.min(state.mag - state.ammo, state.ammoRes); state.ammo += take; state.ammoRes -= take; }
+  }
+  if (state.ammoRes <= 0) { state.ammoRegen += dt; if (state.ammoRegen >= 4) { state.ammoRegen = 0; state.ammoRes = 1; } } else state.ammoRegen = 0;
   if (mouseDown || touchState.firing) tryFire();
+  if (state.respawnT > 0) { state.respawnT -= dt; if (state.respawnT <= 0) respawn(); }
   stepPhysics(dt);
   stepEnemies(dt);
   stepCrumbs(dt);
-  if (state.waveTimer > 0) { state.waveTimer -= dt; if (state.waveTimer <= 0) nextWave(); }
+  stepObjectives(dt);
+  probeHook(dt);
   state.hurtFlash = Math.max(0, state.hurtFlash - dt * 1.5);
   updateView(dt);
   updateHud();
@@ -2046,16 +3001,22 @@ $('calib-back').onclick = () => {
 // ---------------- Menü ----------------
 function showMenu() {
   clearWorld();
+  refreshMenuSave();
   setWorld(getDemoWorld());
   activeCam = orbitCam; orbit.enabled = false;
   orbitCam.near = 0.002; orbitCam.far = 60; orbitCam.updateProjectionMatrix();
   setMode('menu');
 }
-$('btn-demo').onclick = () => { audio(); setWorld(getDemoWorld()); startGame(); lockPointer(); };
+$('btn-demo').onclick = () => { audio(); setWorld(getDemoWorld()); startGame(false); lockPointer(); };
+$('btn-new').onclick = () => { audio(); setWorld(getDemoWorld()); startGame(true); lockPointer(); };
+$('btn-lager').onclick = () => { toLager(); resume(); };
+$('btn-view').onclick = () => toggleView();
+$('btn-again').onclick = () => { startGame(true); lockPointer(); };
+$('btn-free').onclick = () => { state.free = true; setMode('play'); saveProgress(); lockPointer(); };
 $('btn-load').onclick = () => $('file-input').click();
 $('file-input').onchange = e => { const f = e.target.files[0]; if (f) loadScanFile(f); e.target.value = ''; };
 $('btn-resume').onclick = () => resume();
-$('btn-restart').onclick = () => { startGame(); lockPointer(); };
+$('btn-restart').onclick = () => { startGame(true); lockPointer(); };
 $('btn-menu').onclick = () => showMenu();
 
 // Drag & Drop eines Scans
@@ -2065,9 +3026,12 @@ addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.fil
 // Test-Hook für automatisierte Prüfungen
 window.__winzling = {
   state, enemies, startDemo: () => $('btn-demo').click(), keys, P,
-  stepPlayer, stepPhysics, stepEnemies, stepEnemyPhysics, simulate, findWalkable, nextWave, tryFire, scene, playCam, orbitCam, calib, renderer, THREE,
+  stepPlayer, stepPhysics, stepEnemies, stepEnemyPhysics, simulate, findWalkable, tryFire, scene, playCam, orbitCam, calib, renderer, THREE,
   spawnEnemy, crumbs, effects, setMode, applyCalibration, touchState, marker, resolveCapsule, moveBody, playerBody, PHYS_DT, queueJump,
   getUsePL: () => !dragMode, look, clock, detectUp, detectFloorY, loadScanFile,
+  hook, glide, mantle, HOOK, fireHook, hookTarget, releaseHook, tryMantle, findLedgeAhead, updraftLift, hasClearance, sphereFree, probeGround, resetMovers,
+  startGame, completeObjective, stepObjectives, stepCrumbs, die, respawn, toLager, hitscan, destroyNest, trackList, saveProgress, loadProgress, roomIdFor,
+  buildObjectives, generateScanObjectives, DEMO_OBJECTIVES, toggleView, spawnCrumb, setWorld, getDemoWorld, updateView, seedFrom, winGame, objectsOf: () => state.world.objectives,
 };
 
 showMenu();
