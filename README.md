@@ -1,6 +1,6 @@
 # Winzling
 
-Ein Browser-Shooter aus der Ich-Perspektive, bei dem du 2 cm klein bist, mitten in deinem eigenen Zimmer. Die Wände, Möbel und der Boden kommen aus echten Handyfotos, die in 3D nachgebaut werden.
+Ein Browser-Shooter aus der Ich-Perspektive, bei dem du 2 cm klein bist, mitten in deinem eigenen Zimmer. Das Zimmer kommt aus deinen Handyfotos: als schneller Foto-Raum (flache Wände aus 5 bis 6 Fotos) oder als echter 3D-Scan mit eigenen Möbeln.
 
 ## Spielen
 
@@ -40,7 +40,21 @@ Im Menü und im Pausenmenü: **Schnell** (einfache Schatten, Pixelverhältnis 1)
 
 ## Dein eigenes Zimmer ins Spiel holen
 
-### Weg A: einfach (Handy oder PC)
+### Foto-Raum: schnell, direkt mit der Handykamera
+
+„Zimmer mit der Kamera fotografieren“ im Menü baut aus 5 bis 6 Fotos ein spielbares Zimmer. Das ist **kein 3D-Scan**: Die Fotos werden als flache Tapeten auf Boden, vier Wände und (optional) Decke gelegt. Echte 3D-Möbel bekommst du nur mit einer Scan-App und „Eigenen Raum-Scan laden“ (Weg A unten).
+
+1. Auf dem Handy öffnet „Kamera“ direkt die Kamera, ein Foto pro Platz. „aus Galerie“ nimmt ein vorhandenes Bild. Du kannst auch mehrere Bilder auf einmal wählen: Sie werden der Reihe nach auf die freien Plätze verteilt (Boden, vorne, rechts, hinten, links, Decke).
+2. Boden: Handy waagrecht etwa 1 m über den Boden halten. Wände: mit dem Rücken an die gegenüberliegende Wand stellen und die ganze Wand fotografieren, Handy quer. „Vorne“ ist die Wand, zu der du beim Start schaust; rechts, hinten und links folgen im Uhrzeigersinn.
+3. Trage Breite, Länge und Höhe in Metern ein (1,5 bis 15 m, Höhe 1,8 bis 5 m). Schritte zählen hilft: 1 Schritt ist etwa 0,7 m.
+4. „Spielmöbel aufstellen“ stellt Bett, Schreibtisch, Regal, Rampen, Spielzeug und Aufwinde aus dem Demo-Zimmer in deinen Raum (für kleine Räume verkleinert). Ohne Möbel gibt es ein Spiel auf freiem Boden. Fehlende Fotos werden durch Putz- und Holztextur ersetzt.
+5. Die Bilder werden im Browser verkleinert (höchstens 2048 px), leicht aufgehellt und auf die Wandform zugeschnitten. Der Boden wird aus dem mittleren Quadrat alle 0,8 m wiederholt (alternativ über den ganzen Boden gestreckt).
+6. „Mein Foto-Zimmer“ im Menü spielt das zuletzt gebaute Zimmer ohne neue Fotos. Gespeichert wird in IndexedDB; sperrt der Browser das, läuft das Spiel trotzdem, nur ohne Speichern über das Neuladen hinaus. Der Spielstand hängt an Maßen, Möbel-Schalter und Fotos.
+
+Deine Fotos bleiben auf diesem Gerät: Es gibt keinen Upload.
+
+
+### Weg A: echter 3D-Scan (Handy oder PC)
 
 1. Installiere eine Scan-App mit Fotomodus, zum Beispiel Polycam, Scaniverse oder KIRI Engine.
 2. Gehe langsam durch dein Zimmer und mache 60 bis 200 Fotos, die sich überlappen. Fotografiere auch tief, nah am Boden.
