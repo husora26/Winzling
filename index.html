@@ -2582,8 +2582,229 @@ function updateTools() {
   $('glider-ribs').classList.toggle('show', glide.on && state.view === 'fp');
 }
 
-// (Platzhalter: Scan-Generator folgt)
-function generateScanObjectives(w) { return { objectives: [], updrafts: [], strays: [], pickups: [] }; }
+// ---------------- Scan: automatische Zielplatzierung ----------------
+// Deterministisch (seeded(hash(roomId))), nur auf begehbaren, ebenen Flächen; Erreichbarkeit per Boden-Breitensuche, Haken-Beweis und Aufwind-Garantie.
+const SCAN_STATS = { ms: 0, cands: 0, reached: 0, proven: 0, updrafts: 0, patches: 0, rays: 0 };
+function generateScanObjectives(w) {
+  const t0 = performance.now();
+  for (const k in SCAN_STATS) SCAN_STATS[k] = 0;
+  const bvh = w.collider.geometry.boundsTree;
+  const rng = seeded(seedFrom(w.roomId || 'scan'));
+  const b = w.inner, floorY = w.floorY || 0;
+  const bW = Math.max(0.2, b.max.x - b.min.x), bD = Math.max(0.2, b.max.z - b.min.z);
+  const roomH = Math.max(0.3, w.bounds.max.y - floorY), maxY = floorY + 0.85 * roomH;
+  const g = THREE.MathUtils.clamp(Math.sqrt(bW * bD / 1600), 0.06, 0.15);
+  const nx = Math.max(1, Math.floor(bW / g)), nz = Math.max(1, Math.floor(bD / g));
+  const gx = bW / nx, gz = bD / nz, gAvg = (gx + gz) / 2;
+  const rc = new THREE.Ray(), DS = THREE.DoubleSide, DOWN = new THREE.Vector3(0, -1, 0), UPV = new THREE.Vector3(0, 1, 0);
+  let rays = 0;
+  const first = (ox, oy, oz, dir, far) => { rc.origin.set(ox, oy, oz); rc.direction.copy(dir); rays++; return bvh.raycastFirst(rc, DS, 0, far); };
+  const tierOf = y => (y - floorY < 0.06 ? 0 : y - floorY <= 0.60 ? 1 : 2);
+
+  // 1. Raster, Kandidaten
+  const cands = [], grid = new Map(), key = (ix, iz) => ix * 100003 + iz;
+  const FLAT = [[0.015, 0], [-0.015, 0], [0, 0.015], [0, -0.015]];
+  for (let ix = 0; ix < nx; ix++) for (let iz = 0; iz < nz; iz++) {
+    const x = b.min.x + (ix + 0.5) * gx, z = b.min.z + (iz + 0.5) * gz;
+    rc.origin.set(x, w.bounds.max.y + 0.05, z); rc.direction.copy(DOWN);
+    const hits = bvh.raycast(rc, DS); rays++;
+    hits.sort((p, q) => p.distance - q.distance);
+    for (const h of hits) {
+      const y = h.point.y;
+      if (y > maxY || y < floorY - 0.05) continue;
+      if (Math.abs(h.face.normal.y) <= 0.65) continue;
+      const up = first(x, y + 0.001, z, UPV, 1.0);
+      const head = up ? up.distance : Infinity;
+      if (head < 0.03) continue;
+      let flat = true;
+      for (const [dx, dz] of FLAT) { const f = first(x + dx, y + 0.02, z + dz, DOWN, 0.04); if (!f || Math.abs(f.point.y - y) > 0.004) { flat = false; break; } }
+      if (!flat || !hasClearance(bvh, h.point)) continue;
+      const c = { x, y, z, ix, iz, tier: tierOf(y), hidden: false, reach: false, patch: null, edge: false, used: false, id: cands.length };
+      c.hidden = c.tier === 0 && head >= 0.03 && head <= 0.35;
+      cands.push(c);
+      const k = key(ix, iz); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(c);
+    }
+  }
+  SCAN_STATS.cands = cands.length;
+  const nbrs = c => { const out = []; for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const l = grid.get(key(c.ix + dx, c.iz + dz)); if (l) for (const n of l) if (Math.abs(n.y - c.y) <= 0.03) out.push(n); } return out; };
+  const spawn = w.spawn;
+  const dist3 = (a, p) => Math.hypot(a.x - p.x, a.y - p.y, a.z - p.z);
+
+  // 2. Boden-Breitensuche ab Spawn
+  const edgeOk = (a, c2) => {
+    const d = Math.hypot(a.x - c2.x, a.z - c2.z), m = Math.min(3, Math.max(1, Math.round(d / 0.02) - 1));
+    for (let k = 1; k <= m; k++) {
+      const t = k / (m + 1), x = a.x + (c2.x - a.x) * t, z = a.z + (c2.z - a.z) * t, yi = a.y + (c2.y - a.y) * t;
+      const f = first(x, yi + 0.03, z, DOWN, 0.06);
+      if (!f || Math.abs(f.point.y - yi) > 0.03 || !hasClearance(bvh, f.point)) return false;
+    }
+    return true;
+  };
+  let start = null, sd = 0.15;
+  for (const c of cands) { const d = dist3(c, spawn); if (d < sd) { sd = d; start = c; } }
+  if (!start) { sd = 0.6; for (const c of cands) { const d = dist3(c, spawn); if (d < sd) { sd = d; start = c; } } }
+  const reachedR = [];
+  if (start) {
+    const q = [start]; start.reach = true;
+    for (let qi = 0; qi < q.length; qi++) {
+      const c = q[qi];
+      for (const n of nbrs(c)) if (!n.reach && edgeOk(c, n)) { n.reach = true; q.push(n); }
+    }
+    SCAN_STATS.reached = q.length;
+    const stride = Math.max(1, Math.ceil(q.length / 150));
+    for (let i = 0; i < q.length; i += stride) reachedR.push(q[i]);
+  }
+
+  // 3. Flächenstücke (Zusammenhang über Nachbarn) und Kanten
+  const patches = [];
+  for (const c of cands) {
+    if (c.patch) continue;
+    const p = { cands: [], proven: false, minY: c.y, maxY: c.y }; patches.push(p);
+    const st = [c]; c.patch = p;
+    while (st.length) { const u = st.pop(); p.cands.push(u); p.minY = Math.min(p.minY, u.y); p.maxY = Math.max(p.maxY, u.y); for (const n of nbrs(u)) if (!n.patch) { n.patch = p; st.push(n); } }
+  }
+  for (const c of cands) c.edge = nbrs(c).length < 4 || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => !(grid.get(key(c.ix + dx, c.iz + dz)) || []).some(n => Math.abs(n.y - c.y) <= 0.03));
+  SCAN_STATS.patches = patches.length;
+
+  // 4. Haken-Beweis: von erreichbarem R aus (≤ 1,1 m, freie Sicht) ergibt der Probewurf auf S-5 mm einen Kantenanker ≤ 2 cm von S
+  const hv = new THREE.Vector3(), hd = new THREE.Vector3();
+  const hookProves = (R, S) => {
+    const ey = R.y + P.eye;
+    const hz = Math.hypot(R.x - S.x, R.z - S.z) || 1;
+    for (const t of [0, 0.25, 0.5, 0.75]) {   // Rasterpunkt liegt bis zu einer Zelle hinter der Lippe: Probewürfe in Richtung R verschieben
+      const px = S.x + (R.x - S.x) / hz * t * gAvg, pz = S.z + (R.z - S.z) / hz * t * gAvg;
+      hd.set(px - R.x, S.y - 0.005 - ey, pz - R.z);
+      const dist = hd.length();
+      if (dist > 1.1 || dist < 0.03) continue;
+      hd.divideScalar(dist);
+      const los = first(R.x, ey, R.z, hv.set(px - R.x, S.y + 0.015 - ey, pz - R.z).normalize(), Math.hypot(px - R.x, S.y + 0.015 - ey, pz - R.z) - 0.004);
+      if (los) continue;
+      rc.origin.set(R.x, ey, R.z); rc.direction.copy(hd); rays++;
+      const hit = bvh.raycastFirst(rc, DS, 0, 1.2);
+      if (!hit) continue;
+      const a = hookAnchorFor(bvh, hit, hd);
+      // Spec: Anker höchstens 2 cm von S; da S ein Rasterpunkt ist, kommt der Rasterversatz (0,75 g) dazu
+      if (a.ledge && Math.hypot(a.anchor.x - S.x, a.anchor.z - S.z) <= 0.02 + 0.75 * gAvg && Math.abs(a.anchor.y - S.y) <= 0.02) return true;
+    }
+    return false;
+  };
+  const budgetOk = () => performance.now() - t0 < 220;
+  const proveFrom = (S) => { for (const R of reachedR) { if (S.y - R.y < 0.02) continue; if (dist3({ x: R.x, y: R.y + P.eye, z: R.z }, S) > 1.1) continue; if (hookProves(R, S)) return true; } return false; };
+  const markProven = p => {
+    p.proven = true;
+    const stride = Math.max(1, Math.ceil(p.cands.length / 30));
+    for (let i = 0; i < p.cands.length; i += stride) reachedR.push(p.cands[i]);
+    SCAN_STATS.proven++;
+  };
+  for (let pass = 0; pass < 3 && budgetOk(); pass++) {
+    let changed = false;
+    for (const p of patches.slice().sort((a, c2) => a.minY - c2.minY)) {
+      if (p.proven || p.cands.some(c => c.reach) || p.cands.length < 4 || p.maxY - floorY < 0.04) continue;
+      const edges = p.cands.filter(c => c.edge), stride = Math.max(1, Math.ceil(edges.length / 10));
+      for (let i = 0; i < edges.length; i += stride) { if (!budgetOk()) break; if (proveFrom(edges[i])) { markProven(p); changed = true; break; } }
+    }
+    if (!changed) break;
+  }
+  const reachable = c => c.reach || c.patch.proven;
+
+  // 5. Aufwind-Garantie (höchstens 3)
+  const updrafts = [];
+  const floorReach = cands.filter(c => c.reach && c.tier === 0);
+  const sees = (c, y, x, z) => { const d = Math.hypot(c.x - x, c.y + 0.015 - y, c.z - z); return !first(x, y, z, hv.set(c.x - x, c.y + 0.015 - y, c.z - z).normalize(), d - 0.004); };
+  const updraftFor = c => {
+    const top = c.y + 0.3;
+    for (const u of updrafts) { const d = Math.hypot(u.x - c.x, u.z - c.z); if (d >= 0.4 && d <= 0.9 && u.y1 >= top - 0.02 && sees(c, u.y1, u.x, u.z)) return true; }
+    if (updrafts.length >= 3) return false;
+    const pool = floorReach.filter(f => { const d = Math.hypot(f.x - c.x, f.z - c.z); return d >= 0.4 && d <= 0.9; });
+    const stride = Math.max(1, Math.ceil(pool.length / 40));
+    for (let i = (Math.floor(rng() * stride)); i < pool.length; i += stride) {
+      const f = pool[i];
+      const up = first(f.x, f.y + 0.001, f.z, UPV, top - f.y + 0.02);
+      if (up) continue;
+      if (!sees(c, top, f.x, f.z)) continue;
+      updrafts.push({ x: f.x, z: f.z, r: 0.30, y0: f.y + 0.02, y1: top, lift: 0.75 });
+      return true;
+    }
+    return false;
+  };
+  const provable = c => (reachable(c) ? true : c.tier === 2 ? updraftFor(c) : false);
+
+  // 6. Auswahl
+  const chosen = [{ x: spawn.x, y: spawn.y, z: spawn.z }];
+  const dmin = c => { let m = Infinity; for (const o of chosen) { const d = dist3(c, o); if (d < m) m = d; } return m; };
+  const pick = (pool, { minD = 0.35, test = null } = {}) => {
+    const list = [];
+    for (const c of pool) { if (c.used) continue; if (dist3(c, spawn) < 0.4) continue; const d = dmin(c); if (d >= minD) list.push([d, c]); }
+    list.sort((a, c2) => c2[0] - a[0] || a[1].id - c2[1].id);
+    for (const [, c] of list) { if (test && !test(c)) continue; c.used = true; chosen.push(c); return c; }
+    return null;
+  };
+  const objectives = [];
+  const mk = (id, type, chapter, c, extra = {}) => { const o = { id, type, chapter, pos: new THREE.Vector3(c.x, c.y, c.z), required: true, label: id, ...extra }; objectives.push(o); return o; };
+  const sphereOk = c => sphereFree(bvh, { x: c.x, y: c.y, z: c.z }, 0.012);
+  const t0cands = cands.filter(c => c.tier === 0 && c.reach), t1cands = cands.filter(c => c.tier === 1 && reachable(c)), t2prov = cands.filter(c => c.tier === 2 && reachable(c));
+  const t2all = cands.filter(c => c.tier === 2);
+
+  // Leuchtfeuer: höchster erreichbarer Kandidat
+  let beacon = null;
+  { const byY = cands.filter(c => c.y - floorY > 0.02).sort((a, c2) => c2.y - a.y || a.id - c2.id);
+    for (const c of byY) { if (dist3(c, spawn) < 0.4) continue; if (provable(c)) { beacon = c; c.used = true; chosen.push(c); break; } } }
+  if (!beacon) { const c = pick(cands.filter(c2 => c2.reach), { minD: 0.2 }) || cands[0] || { x: spawn.x + 0.1, y: spawn.y, z: spawn.z, id: -1 }; beacon = c; }
+  // Fund: versteckter Bodenpunkt, am weitesten vom Spawn
+  let fund = pick(t0cands.filter(c => c.hidden)) || pick(t0cands) || pick(cands.filter(c => c.reach), { minD: 0.2 });
+  // Splitter-Verteilung
+  const N = THREE.MathUtils.clamp(Math.round(0.6 * bW * bD), 5, 10);
+  const rest = N - 3, n2 = Math.ceil(rest / 2), n3 = rest - n2;
+  const splitters = [];   // { c, chapter }
+  const addSplit = (pool, n, chapter, hiddenFirst, test) => {
+    for (let i = 0; i < n; i++) {
+      let c = null;
+      if (hiddenFirst && i === 0) c = pick(pool.filter(p => p.hidden), { test });
+      if (!c) c = pick(pool, { test });
+      if (c) splitters.push({ c, chapter }); else return n - i;
+    }
+    return 0;
+  };
+  let miss3 = addSplit(t2all, n3, 3, false, c => provable(c));
+  let miss2 = addSplit(t1cands, n2 + miss3, 2, false);
+  let miss1 = addSplit(t0cands, 3 + miss2, 1, true);
+  if (miss1 > 0) addSplit(cands.filter(c => c.reach), miss1, 1, false);
+  // Nester: je Kapitel auf ebenem Fleck, Stufe passend (sonst tiefer)
+  const nestPools = [t0cands, t1cands.length ? t1cands : t0cands, (t2prov.length ? t2prov : t1cands.length ? t1cands : t0cands)];
+  const nests = [];
+  for (let c = 1; c <= 3; c++) {
+    let n = pick(nestPools[c - 1], { test: sphereOk }) || pick(t0cands, { test: sphereOk, minD: 0.2 }) || pick(cands.filter(x => x.reach), { test: sphereOk, minD: 0.1 });
+    nests.push(n);
+  }
+  // Bonus-Splitter: nicht beweisbare hohe Kandidaten, höchstens 2
+  const bonus = [];
+  for (let i = 0; i < 2; i++) { const c = pick(t2all.filter(x => !reachable(x))); if (c) bonus.push(c); }
+
+  // 7. Objekte anlegen (Reihenfolge wie im Demo)
+  let si = 1;
+  for (const ch of [1, 2, 3]) {
+    for (const s of splitters.filter(x => x.chapter === ch)) mk('S' + si++, 'splitter', ch, s.c, { label: 'Glitzersplitter' });
+    if (nests[ch - 1]) {
+      mk('N' + ch, 'nest', ch, nests[ch - 1], { label: 'Fusselnest' });
+      if (ch <= 2) mk('W' + ch, 'werkzeug', ch, nests[ch - 1], { tool: ch === 1 ? 'hook' : 'glider', label: ch === 1 ? 'Enterhaken' : 'Gleiter' });
+    } else if (ch <= 2) {
+      mk('W' + ch, 'werkzeug', ch, start || { x: spawn.x, y: spawn.y, z: spawn.z }, { tool: ch === 1 ? 'hook' : 'glider', label: ch === 1 ? 'Enterhaken' : 'Gleiter' });
+    }
+  }
+  for (const c of bonus) mk('S' + si++, 'splitter', 3, c, { label: 'Bonus-Splitter', required: false });
+  if (fund) mk('F1', 'fund', 3, fund, { label: 'Ohrstecker' });
+  objectives.push({ id: 'L', type: 'lager', chapter: 3, pos: spawn.clone(), required: false, label: 'Lager' });
+  mk('G', 'leuchtfeuer', 3, beacon, { label: 'Leuchtfeuer' });
+  // Streuner und Pickups
+  const strays = [];
+  for (let i = 0; i < 6; i++) { const c = pick(t0cands, { minD: 0.3 }); if (c) strays.push(new THREE.Vector3(c.x, c.y, c.z)); }
+  const pickups = scatterPickups(w, objectives, rng);
+  SCAN_STATS.updrafts = updrafts.length; SCAN_STATS.rays = rays;
+  SCAN_STATS.ms = performance.now() - t0;
+  console.info(`Scan-Ziele: ${objectives.length} Ziele, ${cands.length} Kandidaten, ${updrafts.length} Aufwinde, ${SCAN_STATS.ms.toFixed(0)} ms`);
+  return { objectives, updrafts, strays, pickups };
+}
+
 function toggleView() { state.view = state.view === 'fp' ? 'tp' : 'fp'; }
 
 // ---------------- Hauptschleife ----------------
@@ -2599,8 +2820,7 @@ function simulate(dt) {
   if (state.respawnT > 0) { state.respawnT -= dt; if (state.respawnT <= 0) respawn(); }
   stepPhysics(dt);
   stepEnemies(dt);
-  stepCrumbs(dt);
-  stepObjectives(dt);
+  if (state.respawnT <= 0) { stepCrumbs(dt); stepObjectives(dt); }
   probeHook(dt);
   state.hurtFlash = Math.max(0, state.hurtFlash - dt * 1.5);
   updateView(dt);
@@ -3031,7 +3251,7 @@ window.__winzling = {
   getUsePL: () => !dragMode, look, clock, detectUp, detectFloorY, loadScanFile,
   hook, glide, mantle, HOOK, fireHook, hookTarget, releaseHook, tryMantle, findLedgeAhead, updraftLift, hasClearance, sphereFree, probeGround, resetMovers,
   startGame, completeObjective, stepObjectives, stepCrumbs, die, respawn, toLager, hitscan, destroyNest, trackList, saveProgress, loadProgress, roomIdFor,
-  buildObjectives, generateScanObjectives, DEMO_OBJECTIVES, toggleView, spawnCrumb, setWorld, getDemoWorld, updateView, seedFrom, winGame, objectsOf: () => state.world.objectives,
+  buildObjectives, generateScanObjectives, SCAN_STATS, DEMO_OBJECTIVES, toggleView, spawnCrumb, setWorld, getDemoWorld, updateView, seedFrom, winGame, objectsOf: () => state.world.objectives,
 };
 
 showMenu();
