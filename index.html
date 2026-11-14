@@ -222,6 +222,9 @@ details li { margin-bottom: 4px; }
   #t-view { left: calc(50% - 22px); top: calc(58px + env(safe-area-inset-top, 0px)); }
   #tools { display: none; }
 }
+@media (pointer: coarse) and (max-height: 500px) {
+  #t-glide { right: calc(202px + env(safe-area-inset-right, 0px)); bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
+}
 </style>
 
 <div id="stage"></div>
@@ -586,7 +589,8 @@ function buildDemoRoom() {
 
   const W = 4, D = 3.5, H = 2.5;
   // Boden: 2 cm dicke Platte, Oberseite bei y = 0 (eine dünne Ebene würde man bei niedriger Bildrate durchstoßen)
-  box(W, 0.02, D, M(0xffffff, { map: woodTex, roughness: 0.6 }), 0, -0.02, 0, { cast: false });
+  const floorMat = M(0xffffff, { map: woodTex, roughness: 0.6 });
+  box(W, 0.02, D, floorMat, 0, -0.02, 0, { cast: false });
   // Wände (Boxen außen) und Decke
   const wallMat = M(0xffffff, { map: wallTex, roughness: 0.95 });
   box(W + 0.2, H, 0.1, wallMat, 0, 0, -D / 2 - 0.05, { cast: false });
@@ -602,7 +606,8 @@ function buildDemoRoom() {
   box(0.014, 0.07, D, skirt, W / 2 - 0.007, 0, 0, { cast: false });
 
   // Teppich (3 mm hoch, man kann draufsteigen)
-  box(1.6, 0.003, 1.1, M(0xffffff, { map: rugTex, roughness: 1 }), 0.1, 0, 0.45, { cast: false });
+  const rugMat = M(0xffffff, { map: rugTex, roughness: 1 });
+  box(1.6, 0.003, 1.1, rugMat, 0.1, 0, 0.45, { cast: false });
 
   // Fenster an der Rückwand
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.0), new THREE.MeshBasicMaterial({ color: 0xcfe6ff }));
@@ -753,7 +758,7 @@ function buildDemoRoom() {
   // Wände dürfen keine Schatten des Sonnenlichts werfen (Fenster)
   // inner: begehbarer Bereich innerhalb der Fußleisten (für Gegner- und Krümel-Platzierung)
   const inner = new THREE.Box3(new THREE.Vector3(-W / 2 + 0.08, -0.02, -D / 2 + 0.08), new THREE.Vector3(W / 2 - 0.08, H, D / 2 - 0.08));
-  return { root, solid, inner, spawn: new THREE.Vector3(0.1, 0.01, 0.6), spawnYaw: Math.PI * 0.85, name: 'Demo-Zimmer' };
+  return { root, solid, inner, spawn: new THREE.Vector3(0.1, 0.01, 0.6), spawnYaw: Math.PI * 0.85, name: 'Demo-Zimmer', sun, detailMats: [floorMat, rugMat] };
 }
 
 // ---------------- Kollisions-Geometrie bauen ----------------
@@ -1029,7 +1034,6 @@ const gun = new THREE.Group();
   playCam.add(fill);
 }
 const GUN_Z = -0.0095;
-const muzzleWorld = () => gun.localToWorld(new THREE.Vector3(0, 0.0005, -0.0085));
 
 // ---------------- Gegner ----------------
 const fuzzGeo = (() => {
@@ -1276,7 +1280,7 @@ let demoWorld = null;
 function getDemoWorld() {
   if (!demoWorld) {
     const d = buildDemoRoom();
-    demoWorld = { root: d.root, collidable: d.solid, inner: d.inner, spawn: d.spawn, spawnYaw: d.spawnYaw, name: d.name, kind: 'demo', floorY: 0 };
+    demoWorld = { root: d.root, collidable: d.solid, inner: d.inner, spawn: d.spawn, spawnYaw: d.spawnYaw, name: d.name, kind: 'demo', floorY: 0, sun: d.sun, detailMats: d.detailMats };
   }
   return demoWorld;
 }
@@ -1841,7 +1845,7 @@ function updateView(dt) {
     const want = state.camDist;
     viewRay.origin.copy(camAim); viewRay.direction.copy(camDirV).negate();
     const hit = bvh.raycastFirst(viewRay, THREE.DoubleSide, 0, want + 0.004);
-    const dist = hit ? Math.max(0.003, hit.distance - 0.004) : want;
+    const dist = hit ? Math.max(hit.distance * 0.5, hit.distance - 0.004) : want;
     playCam.position.copy(camAim).addScaledVector(viewRay.direction, dist);
   }
   const lowered = gl || mantle.on;
@@ -2805,7 +2809,269 @@ function generateScanObjectives(w) {
   return { objectives, updrafts, strays, pickups };
 }
 
-function toggleView() { state.view = state.view === 'fp' ? 'tp' : 'fp'; }
+
+// ---------------- Spielfigur (Außenansicht) und Seil ----------------
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* blockiert */ } };
+const figure = new THREE.Group();
+const fig = { phase: 0 };
+{
+  const skin = M(0xf0c8a0, { roughness: 0.7 }), shirt = M(0xf5b82e, { roughness: 0.6 }), pants = M(0x2f5d73, { roughness: 0.8 }), dark = M(0x2b2622, { roughness: 0.5 });
+  const leaf = M(0xa8d878, { roughness: 0.6, side: THREE.DoubleSide }), stemMat = M(0xe8e2c8, { roughness: 0.5 });
+  const cyl = (r, l, mat) => new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.9, l, 8), mat);
+  fig.legs = [];
+  for (const s of [-1, 1]) {
+    const p = new THREE.Group(); p.position.set(s * 0.0017, 0.0088, 0);
+    const leg = cyl(0.0013, 0.0088, pants); leg.position.y = -0.0044;
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.0028, 0.0012, 0.0042), dark); foot.position.set(0, -0.0082, -0.0007);
+    p.add(leg, foot); figure.add(p); fig.legs.push(p);
+  }
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.0062, 0.0078, 0.0034), shirt); torso.position.y = 0.0127;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.0027, 12, 10), skin); head.position.y = 0.0175;
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.0029, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), dark); hair.position.y = 0.0177;
+  const eyeG = new THREE.SphereGeometry(0.00035, 6, 5);
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(eyeG, dark); e.position.set(s * 0.001, 0.0176, -0.0025); figure.add(e); }
+  figure.add(torso, head, hair);
+  // linker Arm schwingt, rechter Arm hält die Nadelschleuder und folgt dem Blick
+  const armL = new THREE.Group(); armL.position.set(-0.0037, 0.0158, 0);
+  const aL = cyl(0.0011, 0.0065, skin); aL.position.y = -0.00325; armL.add(aL);
+  figure.add(armL); fig.armL = armL;
+  const aim = new THREE.Group(); aim.position.set(0.0037, 0.0158, 0);
+  const aR = cyl(0.0011, 0.0055, skin); aR.rotation.x = Math.PI / 2; aR.position.z = -0.0028; aim.add(aR);
+  const sling = gun.clone(true); sling.position.set(0, -0.001, -0.0045); sling.rotation.set(0, 0, 0); sling.scale.setScalar(0.6);
+  sling.traverse(o => { o.visible = true; });
+  aim.add(sling); figure.add(aim); fig.aim = aim; fig.muzzle = new THREE.Vector3(0, -0.0005, -0.0045 - 0.0051);
+  // Löwenzahnschirm und Gleiter
+  const umb = new THREE.Group();
+  const stem = cyl(0.0003, 0.008, stemMat); stem.position.y = 0.0225;
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.0065, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), M(0xf6f1de, { roughness: 0.9, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })); dome.position.y = 0.0265;
+  umb.add(stem, dome); umb.position.z = 0.002; figure.add(umb); fig.umb = umb;
+  const gl = new THREE.Group();
+  for (const s of [-1, 1]) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.011, 0.0003, 0.008), leaf);
+    wing.position.set(s * 0.0092, 0.0168, 0.002); wing.rotation.z = s * 0.18; gl.add(wing);
+  }
+  figure.add(gl); fig.glider = gl;
+  figure.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  figure.visible = false;
+  figure.rotation.order = 'YXZ';
+  scene.add(figure);
+}
+const figTmp = new THREE.Vector3();
+const muzzleWorld = () => {
+  if (state.view === 'tp') { figure.updateMatrixWorld(true); return fig.aim.localToWorld(figTmp.copy(fig.muzzle)).clone(); }
+  playCam.updateMatrixWorld(true);
+  return gun.localToWorld(new THREE.Vector3(0, 0.0005, -0.0085));
+};
+function updateFigure(dt) {
+  const show = state.view === 'tp' && (state.mode === 'play' || state.mode === 'paused' || state.mode === 'dead' || state.mode === 'won');
+  figure.visible = show;
+  if (!show) return;
+  figure.position.copy(state.pos);
+  figure.rotation.y = state.yaw;
+  const walking = state.onGround && state.moving && !mantle.on && hook.s !== 'fest';
+  if (walking) fig.phase += dt * (state.sprinting ? 14 : 10);
+  const sw = walking ? Math.sin(fig.phase) * 0.7 : 0;
+  const air = !state.onGround && hook.s !== 'fest';
+  fig.legs[0].rotation.x = air ? -0.5 : sw; fig.legs[1].rotation.x = air ? 0.35 : -sw;
+  const hooked = hook.s !== 'idle';
+  fig.armL.rotation.x = hooked ? -2.7 : glide.on ? -0.2 : -sw * 0.8;
+  fig.armL.rotation.z = glide.on ? -1.2 : 0;
+  fig.aim.rotation.x = THREE.MathUtils.clamp(state.pitch, -1.2, 1.2);
+  fig.umb.visible = state.gliding; fig.glider.visible = glide.on;
+  figure.rotation.x = glide.on ? -0.9 : hook.s === 'fest' ? 0.25 : 0;
+}
+function setView(v, save = true) {
+  state.view = v === 'tp' ? 'tp' : 'fp';
+  if (save) lsSet('winzling.view', state.view);
+  gun.visible = state.view === 'fp';
+  $('crosshair').style.display = '';
+}
+function toggleView() { setView(state.view === 'fp' ? 'tp' : 'fp'); }
+
+// Seil: Linie mit 8 Punkten (Durchhang bei schlaffem Seil) und Widerhaken-Kegel am Anker
+const ropeGeo = new THREE.BufferGeometry();
+ropeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(8 * 3), 3));
+const rope = new THREE.Line(ropeGeo, new THREE.LineBasicMaterial({ color: 0xe8d8b0 }));
+rope.frustumCulled = false; rope.visible = false; scene.add(rope);
+const barb = new THREE.Mesh(new THREE.ConeGeometry(0.0012, 0.004, 8), new THREE.MeshBasicMaterial({ color: 0xe8d8b0 }));
+barb.visible = false; scene.add(barb);
+const rpA = new THREE.Vector3(), rpB = new THREE.Vector3(), rpD = new THREE.Vector3();
+function updateRope() {
+  const on = hook.s === 'fly' || hook.s === 'fest';
+  rope.visible = barb.visible = on && (state.mode === 'play' || state.mode === 'paused');
+  if (!rope.visible) return;
+  const m = muzzleWorld();
+  rpA.copy(m);
+  let sag = 0;
+  if (hook.s === 'fly') {
+    const k = 1 - Math.max(0, hook.flyT) / HOOK.flyT;
+    rpB.copy(m).lerp(hook.res.anchor, k);
+  } else {
+    rpB.copy(hook.anchor);
+    hkChest.set(state.pos.x, state.pos.y + 0.012, state.pos.z);
+    sag = Math.min(0.03, Math.max(0, hook.L - hkChest.distanceTo(hook.anchor)) * 0.7);
+  }
+  const pa = ropeGeo.attributes.position;
+  for (let i = 0; i < 8; i++) {
+    const t = i / 7;
+    pa.setXYZ(i, rpA.x + (rpB.x - rpA.x) * t, rpA.y + (rpB.y - rpA.y) * t - sag * 4 * t * (1 - t), rpA.z + (rpB.z - rpA.z) * t);
+  }
+  pa.needsUpdate = true;
+  barb.position.copy(rpB);
+  rpD.copy(rpB).sub(rpA);
+  if (rpD.lengthSq() > 1e-12) barb.quaternion.setFromUnitVectors(UP, rpD.normalize());
+}
+
+// ---------------- Grafikstufen: Schnell, Schön, Kino ----------------
+const GFX = { level: 'schoen', auto: true, lowT: 0, grace: 0, fps: 60, comp: null, loading: false, failed: false, mods: null, rp: null, gtao: null, bokeh: null, bloom: null, vig: null, env: null, dust: null, focus: 0.3, detail: null };
+const GFX_ORDER = ['schnell', 'schoen', 'kino'];
+const gfxHit = new THREE.Raycaster();
+
+async function loadPost() {
+  if (GFX.mods || GFX.loading || GFX.failed) return GFX.mods;
+  GFX.loading = true;
+  try {
+    const [ec, rp, gt, ub, bk, sp, op, vg, re] = await Promise.all([
+      import('three/addons/postprocessing/EffectComposer.js'), import('three/addons/postprocessing/RenderPass.js'),
+      import('three/addons/postprocessing/GTAOPass.js'), import('three/addons/postprocessing/UnrealBloomPass.js'),
+      import('three/addons/postprocessing/BokehPass.js'), import('three/addons/postprocessing/ShaderPass.js'),
+      import('three/addons/postprocessing/OutputPass.js'), import('three/addons/shaders/VignetteShader.js'),
+      import('three/addons/environments/RoomEnvironment.js'),
+    ]);
+    GFX.mods = { EffectComposer: ec.EffectComposer, RenderPass: rp.RenderPass, GTAOPass: gt.GTAOPass, UnrealBloomPass: ub.UnrealBloomPass, BokehPass: bk.BokehPass, ShaderPass: sp.ShaderPass, OutputPass: op.OutputPass, VignetteShader: vg.VignetteShader, RoomEnvironment: re.RoomEnvironment };
+  } catch (err) {
+    console.warn('Kino-Grafik nicht verfügbar:', err);
+    GFX.failed = true;
+  } finally { GFX.loading = false; }
+  return GFX.mods;
+}
+// GTAO liest Tiefe als lineare Standardtiefe; der Renderer nutzt einen logarithmischen Tiefenpuffer: im Shader zurückrechnen
+function patchLogDepth(mat, near, far) {
+  const fn = 'uniform float logNear;\nuniform float logFar;\nfloat logToStd(float d) { float w = pow(logFar + 1.0, d) - 1.0; return (w - logNear) * logFar / ((logFar - logNear) * max(w, 1e-6)); }\n';
+  let fs = mat.fragmentShader.replace(/(textureLod|texelFetch)\(tDepth,([^)]*)\)\.(\w+)/g, 'logToStd($1(tDepth,$2).$3)');
+  if (fs === mat.fragmentShader || !fs.includes('float getDepth(')) return false;
+  mat.fragmentShader = fs.replace('float getDepth(', fn + 'float getDepth(');
+  mat.uniforms.logNear = { value: near }; mat.uniforms.logFar = { value: far };
+  mat.needsUpdate = true;
+  return true;
+}
+function buildComposer() {
+  const m = GFX.mods;
+  if (!m || GFX.comp) return;
+  const w = innerWidth, h = innerHeight, pr = renderer.getPixelRatio();
+  const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: 4 });
+  const comp = new m.EffectComposer(renderer, rt);
+  comp.setPixelRatio(pr); comp.setSize(w, h);
+  GFX.rp = new m.RenderPass(scene, playCam);
+  comp.addPass(GFX.rp);
+  try {
+    const gtao = new m.GTAOPass(scene, playCam, w, h);
+    gtao.updateGtaoMaterial({ radius: 0.035, distanceExponent: 1.4, thickness: 1, scale: 1.3, samples: 12, distanceFallOff: 1 });
+    gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 12 });
+    const ok = patchLogDepth(gtao.gtaoMaterial, playCam.near, playCam.far) & patchLogDepth(gtao.pdMaterial, playCam.near, playCam.far);
+    if (ok) { gtao.blendIntensity = 1; comp.addPass(gtao); GFX.gtao = gtao; } else { gtao.dispose(); console.warn('GTAO-Shader nicht patchbar, Umgebungsverdeckung aus'); }
+  } catch (err) { console.warn('GTAO nicht verfügbar:', err); }
+  GFX.bokeh = new m.BokehPass(scene, playCam, { focus: 0.3, aperture: 0.06, maxblur: 0.004 });
+  comp.addPass(GFX.bokeh);
+  GFX.bloom = new m.UnrealBloomPass(new THREE.Vector2(w, h), 0.18, 0.5, 0.92);
+  comp.addPass(GFX.bloom);
+  GFX.vig = new m.ShaderPass(m.VignetteShader);
+  GFX.vig.uniforms.offset.value = 1.0; GFX.vig.uniforms.darkness.value = 1.05;
+  comp.addPass(GFX.vig);
+  comp.addPass(new m.OutputPass());
+  GFX.comp = comp;
+  // prozedurale Umgebungs-Map für Reflexionen
+  const pm = new THREE.PMREMGenerator(renderer);
+  GFX.env = pm.fromScene(new m.RoomEnvironment(), 0.04).texture;
+  pm.dispose();
+  applyKinoScene(GFX.level === 'kino');
+}
+// Staubpartikel im Sonnenlicht, Detailtextur für Boden und Teppich
+function applyKinoScene(on) {
+  scene.environment = on ? GFX.env : null;
+  scene.environmentIntensity = 0.3;
+  if (!GFX.dust) {
+    const n = 260, pos = new Float32Array(n * 3), r = seeded(77);
+    for (let i = 0; i < n; i++) pos.set([(r() - 0.5) * 0.7, r() * 0.35, (r() - 0.5) * 0.7], i * 3);
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    GFX.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xfff0d0, size: 0.0006, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
+    GFX.dust.frustumCulled = false; scene.add(GFX.dust);
+  }
+  GFX.dust.visible = on;
+  if (!GFX.detail) {
+    GFX.detail = canvasTex(256, 256, (g, w, h) => {
+      const r = seeded(31); g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 9000; i++) { const v = (r() * 255) | 0; g.fillStyle = `rgba(${v},${v},${v},0.5)`; g.fillRect(r() * w, r() * h, 1 + r() * 2, 1 + r() * 2); }
+    }, [90, 80]);
+    GFX.detail.colorSpace = THREE.NoColorSpace;
+  }
+  const dw = demoWorld;
+  if (dw) for (const mat of dw.detailMats || []) { mat.bumpMap = on ? GFX.detail : null; mat.bumpScale = 0.6; mat.needsUpdate = true; }
+}
+let dustT = 0;
+function updateDust(dt) {
+  if (!GFX.dust || !GFX.dust.visible) return;
+  dustT += dt;
+  const p = GFX.dust.geometry.attributes.position, c = activeCam.position, R = 0.35;
+  for (let i = 0; i < p.count; i++) {
+    let x = p.getX(i) + Math.sin(dustT * 0.4 + i) * 0.003 * dt * 10, y = p.getY(i) + (0.004 + (i % 5) * 0.001) * dt, z = p.getZ(i) + Math.cos(dustT * 0.3 + i * 1.7) * 0.003 * dt * 10;
+    // um die Kamera herum wiederholen
+    if (x - c.x > R) x -= 2 * R; else if (x - c.x < -R) x += 2 * R;
+    if (z - c.z > R) z -= 2 * R; else if (z - c.z < -R) z += 2 * R;
+    if (y - c.y > 0.3) y -= 0.6; else if (y - c.y < -0.3) y += 0.6;
+    p.setXYZ(i, x, y, z);
+  }
+  p.needsUpdate = true;
+}
+function setGfx(level, save = true) {
+  if (!GFX_ORDER.includes(level)) level = 'schoen';
+  GFX.level = level; GFX.lowT = 0; GFX.grace = 4;
+  if (save) lsSet('winzling.gfx', level);
+  document.querySelectorAll('[data-gfx]').forEach(b => b.classList.toggle('sel', b.dataset.gfx === level));
+  renderer.setPixelRatio(level === 'schnell' ? 1 : Math.min(devicePixelRatio, level === 'kino' || isTouch ? 1.5 : 2));
+  renderer.setSize(innerWidth, innerHeight);
+  const soft = level !== 'schnell';
+  if ((renderer.shadowMap.type === THREE.PCFSoftShadowMap) !== soft) {
+    renderer.shadowMap.type = soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    scene.traverse(o => { if (o.material) [o.material].flat().forEach(m => { m.needsUpdate = true; }); });
+  }
+  const sun = demoWorld && demoWorld.sun;
+  if (sun) {
+    const size = level === 'schnell' ? 2048 : (isTouch ? 2048 : 4096);
+    if (sun.shadow.mapSize.x !== size) { sun.shadow.map?.dispose(); sun.shadow.map = null; sun.shadow.mapSize.set(size, size); }
+  }
+  if (GFX.comp) { GFX.comp.setPixelRatio(renderer.getPixelRatio()); GFX.comp.setSize(innerWidth, innerHeight); }
+  if (level === 'kino') loadPost().then(m => { if (m && GFX.level === 'kino') { buildComposer(); applyKinoScene(true); } else if (!m) setGfx('schoen', false); });
+  else applyKinoScene(false);
+}
+function gfxDown() {
+  const i = GFX_ORDER.indexOf(GFX.level);
+  if (i <= 0) return;
+  setGfx(GFX_ORDER[i - 1], false);
+  toast('Grafik: ' + ['Schnell', 'Schön', 'Kino'][i - 1], 'Die Bildrate war zu niedrig, die Stufe wurde gesenkt.', 3);
+}
+// Bildrate beobachten: 3 s unter 25 fps → nächstniedrigere Stufe
+function gfxWatch(rawDt) {
+  if (!GFX.auto || state.mode !== 'play' || document.hidden) { GFX.lowT = 0; return; }
+  GFX.fps += (1 / Math.max(rawDt, 1e-4) - GFX.fps) * 0.1;
+  if (GFX.grace > 0) { GFX.grace -= rawDt; GFX.lowT = 0; return; }
+  if (GFX.fps < 25) { GFX.lowT += rawDt; if (GFX.lowT > 3) { GFX.lowT = 0; GFX.grace = 4; gfxDown(); } } else GFX.lowT = 0;
+}
+function renderFrame(dt) {
+  const kinoMode = GFX.level === 'kino' && GFX.comp && (state.mode === 'play' || state.mode === 'paused' || state.mode === 'dead' || state.mode === 'won');
+  if (!kinoMode) { renderer.render(scene, activeCam); return; }
+  GFX.rp.camera = activeCam; if (GFX.gtao) GFX.gtao.camera = activeCam; GFX.bokeh.camera = activeCam;
+  // Schärfe auf die Stelle unter dem Fadenkreuz
+  const bvh = state.world.collider.geometry.boundsTree;
+  viewRay.origin.copy(activeCam.position); viewRay.direction.set(0, 0, -1).applyQuaternion(activeCam.quaternion);
+  const hit = bvh.raycastFirst(viewRay, THREE.DoubleSide, 0, 4);
+  GFX.focus += ((hit ? hit.distance : 4) - GFX.focus) * Math.min(1, dt * 5);
+  GFX.bokeh.uniforms.focus.value = Math.max(0.02, GFX.focus);
+  GFX.comp.render(dt);
+}
+addEventListener('resize', () => { if (GFX.comp) GFX.comp.setSize(innerWidth, innerHeight); });
+document.querySelectorAll('[data-gfx]').forEach(b => b.addEventListener('click', () => setGfx(b.dataset.gfx)));
 
 // ---------------- Hauptschleife ----------------
 // Ein Spielbild: Waffe, feste Physikschritte, Gegner, Krümel, Wellen, Anzeige
@@ -2829,7 +3095,8 @@ function simulate(dt) {
 const clock = new THREE.Clock();
 let menuT = 0;
 function frame() {
-  const dt = Math.min(0.05, clock.getDelta());
+  const raw = clock.getDelta(), dt = Math.min(0.05, raw);
+  gfxWatch(raw);
   if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) $('toast').classList.remove('show'); }
   if (state.mode === 'play') {
     simulate(dt);
@@ -2843,7 +3110,8 @@ function frame() {
     orbit.update();
   }
   stepEffects(dt);
-  renderer.render(scene, activeCam);
+  updateFigure(dt); updateRope(); updateDust(dt);
+  renderFrame(dt);
   requestAnimationFrame(frame);
 }
 
@@ -3244,16 +3512,26 @@ addEventListener('dragover', e => e.preventDefault());
 addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && state.mode === 'menu') loadScanFile(f); });
 
 // Test-Hook für automatisierte Prüfungen
+// Debug-Schalter (?debug=1): Teleport, Werkzeuge, Ziele
+if (/[?&]debug=1/.test(location.search)) {
+  window.wz = {
+    tp: (x, y, z) => { resetMovers(); state.pos.set(x, y, z); state.vel.set(0, 0, 0); state.onGround = false; },
+    give: t => { if (t === 'hook' || t === 'glider') { state.tools[t] = true; const o = state.world.objectives?.find(q => q.type === 'werkzeug' && q.tool === t); if (o) completeObjective(o, true); } },
+    get objectives() { return state.world.objectives; },
+  };
+}
 window.__winzling = {
   state, enemies, startDemo: () => $('btn-demo').click(), keys, P,
   stepPlayer, stepPhysics, stepEnemies, stepEnemyPhysics, simulate, findWalkable, tryFire, scene, playCam, orbitCam, calib, renderer, THREE,
   spawnEnemy, crumbs, effects, setMode, applyCalibration, touchState, marker, resolveCapsule, moveBody, playerBody, PHYS_DT, queueJump,
   getUsePL: () => !dragMode, look, clock, detectUp, detectFloorY, loadScanFile,
   hook, glide, mantle, HOOK, fireHook, hookTarget, releaseHook, tryMantle, findLedgeAhead, updraftLift, hasClearance, sphereFree, probeGround, resetMovers,
-  startGame, completeObjective, stepObjectives, stepCrumbs, die, respawn, toLager, hitscan, destroyNest, trackList, saveProgress, loadProgress, roomIdFor,
+  GFX, setGfx, setView, figure, fig, rope, muzzleWorld, updateFigure, updateRope, renderFrame, loadPost, startGame, completeObjective, stepObjectives, stepCrumbs, die, respawn, toLager, hitscan, destroyNest, trackList, saveProgress, loadProgress, roomIdFor,
   buildObjectives, generateScanObjectives, SCAN_STATS, DEMO_OBJECTIVES, toggleView, spawnCrumb, setWorld, getDemoWorld, updateView, seedFrom, winGame, objectsOf: () => state.world.objectives,
 };
 
 showMenu();
+setView(lsGet('winzling.view') === 'tp' ? 'tp' : 'fp', false);
+setGfx(lsGet('winzling.gfx') || (isTouch ? 'schnell' : 'schoen'), false);
 frame();
 </script>
