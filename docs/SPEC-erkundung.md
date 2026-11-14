@@ -75,7 +75,7 @@ Jede Position beim Start mit `hasClearance` prüfen; schlägt sie fehl, per `fin
 | Sinken | 0,11 m/s | 0,16 m/s (neutral) |
 | Vorwärts | nur Luftsteuerung | 0,55 m/s, Gleitzahl ≈ 3,4 |
 | Steuern | wie Laufen | Blickrichtung |
-- Aufklappen: mindestens 0,15 s in der Luft und kein Boden innerhalb 3 cm. Zuklappen: Tipp, Bodenkontakt, Hakenwurf-Treffer, Frontalaufprall.
+- Aufklappen: mindestens 0,06 s in der Luft und kein Boden innerhalb 1,5 cm; innerhalb eines Aufwinds entfallen beide Bedingungen (Sprung + Tipp am Tisch trägt hoch). Beim Hängen am Seil ignoriert der Gleiter-Knopf den Tipp. Zuklappen: Tipp, Bodenkontakt, Hakenwurf-Treffer, Frontalaufprall.
 - Eigener Zweig `stepGlide(h)`, Zustand `glide = { v, heading, stallT }`:
   - Kurs dreht mit max. 2,2 rad/s auf `state.yaw`.
   - Zielfahrt v_soll = clamp(0,55 − 0,45·sin(pitch), 0,20, 0,95); v nähert sich mit 0,6 m/s².
@@ -84,7 +84,7 @@ Jede Position beim Start mit `hasClearance` prüfen; schlägt sie fehl, per `fin
   - `vel = (−sin(heading)·v, −Sinken + Auftrieb, −cos(heading)·v)`, vertikal mit Rate 4/s angeglichen; `moveBody(vel·h)`.
   - Landung (Kontakt n.y > 0,6): zuklappen, 30 % der Fahrt als auslaufender Schub. Wandkontakt: Fahrt in die Wand streichen; bleibt v < 0,15 → zuklappen und fallen. Kein Fallschaden.
 - Aufwinde: `world.updrafts = [{ x, z, r, y0, y1, lift }]`, Auftrieb voll im Kern, linear auf 0 am Rand; wirkt auch auf den Schirm (halbe Stärke). Sichtbar als langsam aufsteigende Staubpunkte.
-  - Demo: Lampe (1.36, −1.42), r 0,28, y 0,77–1,90, lift 0,50 · Laptop (1.20, −1.50), r 0,18, y 0,77–1,20, lift 0,30 · Sonnenfleck Teppich (0.10, 0.60), r 0,25, y 0–0,60, lift 0,28.
+  - Demo: Lampe (1.36, −1.42), r 0,30, y 0,74–2,25, lift 0,75 · Laptop (1.20, −1.50), r 0,18, y 0,74–1,20, lift 0,30 · Sonnenfleck Teppich (0.10, 0.60), r 0,25, y 0–0,60, lift 0,28.
   - Scans: nur die Aufwinde aus der Aufwind-Garantie (2.4), lift 0,50, r 0,28.
 - Kamera: Rollwinkel = −clamp(Kursrate·0,12, ±0,35), geglättet; Sichtfeld 78° → 86° mit Fahrt; Waffe abgesenkt, zwei Blattrippen des Gleiters am oberen Bildrand.
 

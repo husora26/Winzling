@@ -69,7 +69,7 @@ body {
   position: absolute; left: 50%; top: 22%; transform: translateX(-50%);
   font-family: var(--font-display); font-size: clamp(18px, 4vw, 30px); text-align: center;
   color: var(--paper); text-shadow: 0 2px 0 var(--ink), 0 0 18px rgba(0,0,0,0.6);
-  opacity: 0; transition: opacity 0.3s; width: min(90vw, 700px); text-wrap: balance;
+  opacity: 0; transition: opacity 0.3s; width: min(90vw, 700px); text-wrap: balance; pointer-events: none;
 }
 #toast.show { opacity: 1; }
 #toast small { display: block; font-family: var(--font-body); font-size: 15px; font-weight: 500; margin-top: 6px; }
@@ -221,8 +221,11 @@ details li { margin-bottom: 4px; }
   .tool { min-width: 52px; padding: 4px 6px; font-size: 10px; }
   #t-view { left: calc(50% - 22px); top: calc(58px + env(safe-area-inset-top, 0px)); }
   #tools { display: none; }
+  #toast { top: max(22%, calc(112px + env(safe-area-inset-top, 0px))); }
 }
 @media (pointer: coarse) and (max-height: 500px) {
+  #toast { left: auto; right: calc(130px + env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: none; width: min(270px, 34vw); font-size: 15px; }
+  #toast small { font-size: 11px; margin-top: 2px; }
   #t-glide { right: calc(202px + env(safe-area-inset-right, 0px)); bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
 }
 </style>
@@ -629,7 +632,7 @@ function buildDemoRoom() {
   box(1.02, 0.04, 1.25, M(0x4f7fa8, { roughness: 1 }), bx, 0.55, bz + 0.33);
   box(1.0, 0.9, 0.05, woodDark, bx, 0, -D / 2 + 0.025);
   // herunterhängende Decke als Aufstieg aufs Bett
-  ramp([-0.62, 0, 0.75], [-1.0, 0.59, 0.12], 0.7, 0.02, M(0x4f7fa8, { roughness: 1 }));
+  ramp([-0.62, -0.004, 0.75], [-1.0, 0.59, 0.12], 0.7, 0.02, M(0x4f7fa8, { roughness: 1 }));
   // Schuhkarton unter dem Bett
   box(0.33, 0.12, 0.2, M(0xc9a27a, { roughness: 0.9 }), -1.6, 0, -0.3, { ry: 0.3 });
   // Socke
@@ -655,8 +658,8 @@ function buildDemoRoom() {
   stack.forEach((s, i) => { box(s[0], s[1], s[2], M(bookCols[i], { roughness: 0.8 }), 1.5, sy, -0.85, { ry: (i - 1) * 0.12 }); sy += s[1]; });
   ramp([1.5, 0.0, -0.45], [1.5, sy, -0.78], 0.15, 0.012, M(bookCols[4], { roughness: 0.8 }));
   // Lineal endet genau an der Sitzkante (x = 1,025), Buch-Rampe führt vom Sitz (36°) bis zur Vorderkante der Tischplatte (z = -1,05)
-  ramp([1.5, sy, -0.85], [1.025, 0.472, -0.85], 0.035, 0.004, M(0xe8e2c8, { roughness: 0.4 }));
-  ramp([0.8, 0.47, -0.67], [0.8, 0.752, -1.049], 0.16, 0.014, M(bookCols[1], { roughness: 0.8 }));
+  ramp([1.5, sy, -0.85], [1.025, 0.47, -0.85], 0.035, 0.004, M(0xe8e2c8, { roughness: 0.4 }));
+  ramp([0.8, 0.47, -0.67], [0.8, 0.75, -1.049], 0.16, 0.014, M(bookCols[1], { roughness: 0.8 }));
 
   // Schreibtisch-Dinge
   const top = 0.75;
@@ -1421,7 +1424,7 @@ function look(dx, dy, sens = 0.0022) {
 }
 
 // Touch: links Stick, rechts Umsehen
-const touchState = { stickId: null, stickOrigin: null, move: new THREE.Vector2(), lookId: null, lookLast: null, firing: false };
+const touchState = { stickId: null, stickOrigin: null, move: new THREE.Vector2(), lookId: null, lookLast: null, firing: false, pinch: null };
 const stick = $('t-stick'), knob = $('t-knob');
 canvas.addEventListener('touchstart', e => {
   if (state.mode !== 'play') return;
@@ -1432,6 +1435,10 @@ canvas.addEventListener('touchstart', e => {
       stick.style.display = 'block'; stick.style.left = (t.clientX - 55) + 'px'; stick.style.top = (t.clientY - 55) + 'px';
     } else if (touchState.lookId === null) {
       touchState.lookId = t.identifier; touchState.lookLast = { x: t.clientX, y: t.clientY };
+    } else if (!touchState.pinch && state.view === 'tp' && t.identifier !== touchState.stickId) {
+      // zweiter Finger rechts: Kneifen zoomt die Verfolgerkamera
+      const a = [...e.touches].find(x => x.identifier === touchState.lookId);
+      if (a) touchState.pinch = { b: t.identifier, d: Math.hypot(a.clientX - t.clientX, a.clientY - t.clientY) };
     }
   }
   e.preventDefault();
@@ -1444,6 +1451,14 @@ canvas.addEventListener('touchmove', e => {
       if (l > max) { dx *= max / l; dy *= max / l; }
       touchState.move.set(dx / max, dy / max);
       knob.style.left = (32 + dx) + 'px'; knob.style.top = (32 + dy) + 'px';
+    } else if (touchState.pinch && (t.identifier === touchState.lookId || t.identifier === touchState.pinch.b)) {
+      const a = [...e.touches].find(x => x.identifier === touchState.lookId), b = [...e.touches].find(x => x.identifier === touchState.pinch.b);
+      if (a && b) {
+        const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        if (touchState.pinch.d > 1 && d > 1) state.camDist = THREE.MathUtils.clamp(state.camDist * touchState.pinch.d / d, 0.03, 0.2);
+        touchState.pinch.d = d;
+      }
+      if (t.identifier === touchState.lookId) touchState.lookLast = { x: t.clientX, y: t.clientY };
     } else if (t.identifier === touchState.lookId) {
       look((t.clientX - touchState.lookLast.x) * 1.6, (t.clientY - touchState.lookLast.y) * 1.6);
       touchState.lookLast = { x: t.clientX, y: t.clientY };
@@ -1454,6 +1469,13 @@ canvas.addEventListener('touchmove', e => {
 const endTouch = e => {
   for (const t of e.changedTouches) {
     if (t.identifier === touchState.stickId) { touchState.stickId = null; touchState.move.set(0, 0); stick.style.display = 'none'; knob.style.left = knob.style.top = '32px'; }
+    if (touchState.pinch && (t.identifier === touchState.lookId || t.identifier === touchState.pinch.b)) {
+      if (t.identifier === touchState.lookId) touchState.lookId = touchState.pinch.b;   // der andere Finger übernimmt das Umsehen
+      touchState.pinch = null;
+      const rest = [...e.touches].find(x => x.identifier === touchState.lookId && x !== t);
+      if (rest) touchState.lookLast = { x: rest.clientX, y: rest.clientY }; else touchState.lookId = null;
+      continue;
+    }
     if (t.identifier === touchState.lookId) touchState.lookId = null;
   }
 };
@@ -1461,7 +1483,7 @@ canvas.addEventListener('touchend', endTouch);
 canvas.addEventListener('touchcancel', endTouch);
 function resetTouchInput() {
   touchState.firing = false; touchState.move.set(0, 0);
-  touchState.stickId = touchState.lookId = null;
+  touchState.stickId = touchState.lookId = null; touchState.pinch = null;
   keys.delete('Space');
   stick.style.display = 'none'; knob.style.left = knob.style.top = '32px';
 }
@@ -1476,7 +1498,7 @@ holdBtn('t-fire', () => { touchState.firing = true; }, () => { touchState.firing
 holdBtn('t-jump', () => { keys.add('Space'); queueJump(); }, () => keys.delete('Space'));
 holdBtn('t-reload', () => reload());
 holdBtn('t-hook', () => fireHook());
-holdBtn('t-glide', () => { if (state.tools.glider && !state.onGround) queueJump(); });
+holdBtn('t-glide', () => { if (state.tools.glider && !state.onGround && hook.s !== 'fest') queueJump(); });
 holdBtn('t-view', () => toggleView());
 holdBtn('t-pause', () => pause());
 
@@ -1487,7 +1509,7 @@ const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.V
 let physAcc = 0;
 
 // ---------------- Erkundung: Kantengriff, Enterhaken, Gleiter ----------------
-const HOOK = { range: 1.2, minRange: 0.03, retract: 0.9, release: 0.4, maxVel: 1.6, swing: 0.8, pullGravity: 0.3, flyT: 0.08, cone: 2.5 * Math.PI / 180 };
+const HOOK = { range: 1.2, minRange: 0.03, retract: 0.9, release: 0.4, maxVel: 1.6, swing: 0.8, pullGravity: 0, flyT: 0.08, cone: 2.5 * Math.PI / 180 };
 const GLIDER = { sink: 0.16, speed: 0.55, turn: 2.2, stallV: 0.26 };
 const hook = { s: 'idle', anchor: new THREE.Vector3(), ledge: null, ceil: false, L: 0, Lmin: 0.012, cd: 0, flyT: 0, res: null, retract: true, progT: 0, progD: 0, blockT: 0, probeT: 0, valid: false, flash: 0 };
 const glide = { on: false, v: 0, heading: 0, stallT: 0, rate: 0, roll: 0, fov: 78, cdTap: 0 };
@@ -1665,6 +1687,7 @@ function stepHooked(h, bvh) {
   if (los && los.distance < dist - 0.006) hook.blockT += h; else hook.blockT = Math.max(0, hook.blockT - h);
   if (hook.blockT > 0.6) { toast('Seil gerissen', '', 1.2); sfx.empty(); releaseHook(false); return; }
   // Ankunft: Seil kurz genug
+  if (hook.ledge && state.onGround && Math.abs(p.y - hook.ledge.y) < 0.012 && dist < 0.1) { releaseHook(false); return; }   // steht schon auf der Kante
   if (hook.L <= hook.Lmin + 1e-6 && dist <= hook.Lmin + 0.004) {
     if (hook.ledge) { const t = hook.ledge.clone(); releaseHook(false); hook.cd = 0.3; startMantle(t); return; }
     if (state.onGround) { releaseHook(false); return; }
@@ -1672,6 +1695,11 @@ function stepHooked(h, bvh) {
   // Physik: positionsbasiertes Pendel
   vel.y -= P.gravity * h * (hook.retract && hook.L > hook.Lmin ? HOOK.pullGravity : 1);   // beim Einholen zieht das Seil den Winzling fast geradlinig heran
   vel.multiplyScalar(Math.exp(-0.4 * h));
+  if (hook.retract && hook.L > hook.Lmin && dist > 0.02) {   // Einholen: Mindestgeschwindigkeit zum Anker, damit das Seil nicht durchhängt
+    const vr = vel.dot(hkDir), fl = HOOK.retract;
+    if (vr < fl) vel.addScaledVector(hkDir, fl - vr);
+    hkAcc.copy(hkDir).multiplyScalar(vel.dot(hkDir)); vel.lerp(hkAcc, Math.min(1, 15 * h));   // Quergeschwindigkeit abbauen: gerader Zug
+  }
   const ml = Math.hypot(move.x, move.z);
   if (ml > 0.1) {
     hkAcc.set(move.x, 0, move.z).multiplyScalar(HOOK.swing * h);
@@ -1801,8 +1829,9 @@ function stepPlayer(h) {
   // Kantengriff: Sprungtaste gehalten und Bewegung zur Wand
   if ((!state.onGround || state.jumpQueued) && tryMantle(bvh)) return;
   // Gleiter: Tipp in der Luft klappt auf und zu
-  if (state.tools.glider && state.jumpQueued && !state.onGround && state.airT >= 0.1) {
-    if (glide.on) closeGlide(); else if (!groundWithin(bvh, 0.03)) openGlide(bvh);
+  const inUp = updraftLift(state.pos) > 0;
+  if (state.tools.glider && state.jumpQueued && !state.onGround && (state.airT >= 0.06 || inUp)) {
+    if (glide.on) closeGlide(); else if (inUp || !groundWithin(bvh, 0.015)) openGlide(bvh);
     state.jumpQueued = false; state.jumpBuf = 0;
   }
   if (glide.on) { stepGlide(h, bvh); return; }
@@ -1812,6 +1841,7 @@ function stepPlayer(h) {
     state.vel.y = P.jump; state.onGround = false; state.jumpQueued = false; state.jumpBuf = 0;
   }
   const lift = updraftLift(state.pos) * 0.5;
+  if (inUp && !state.upHint && state.tools.glider) { state.upHint = true; toast('Aufwind', 'Gleiter öffnen: Aufwind trägt dich hoch', 3); }
   state.gliding = !state.tools.glider && !state.onGround && keys.has('Space') && (state.vel.y < 0 || lift > 0);
   if (state.gliding && lift > 0) state.vel.y = Math.max(state.vel.y, lift - P.glideTerminal + P.gravity * h);
   const term = state.gliding ? P.glideTerminal : P.terminal;
@@ -1843,7 +1873,13 @@ function updateView(dt) {
     // Verfolgerkamera: Schulterblick hinter der Figur, Kollision per Strahl gegen die BVH
     const bvh = state.world.collider.geometry.boundsTree;
     camDirV.set(0, 0, -1).applyEuler(playCam.rotation);
+    // Schulterversatz zuerst gegen die Welt prüfen (Wand an der rechten Schulter), dann nach hinten
+    camTmp.set(state.pos.x, state.pos.y + 0.0235, state.pos.z);
     camAim.set(state.pos.x + Math.cos(state.yaw) * 0.007, state.pos.y + 0.0235, state.pos.z - Math.sin(state.yaw) * 0.007);
+    viewRay.origin.copy(camTmp); viewRay.direction.copy(camAim).sub(camTmp);
+    const sideLen = viewRay.direction.length(); viewRay.direction.divideScalar(sideLen);
+    const sideHit = bvh.raycastFirst(viewRay, THREE.DoubleSide, 0, sideLen + 0.003);
+    if (sideHit) camAim.copy(camTmp).addScaledVector(viewRay.direction, Math.max(0, Math.min(sideLen, sideHit.distance - 0.003)));
     const want = state.camDist;
     viewRay.origin.copy(camAim); viewRay.direction.copy(camDirV).negate();
     const hit = bvh.raycastFirst(viewRay, THREE.DoubleSide, 0, want + 0.004);
@@ -2073,7 +2109,7 @@ function stepEnemies(dt) {
   }
   // Nachschub: solange das Nest lebt, alle 12 s eine Wache, wenn der Spieler 0,15 bis 1,5 m entfernt ist
   for (const o of state.world.objectives || []) {
-    if (o.type !== 'nest' || o.done) continue;
+    if (o.type !== 'nest' || o.done || !o.guarded) continue;
     const d = o.pos.distanceTo(state.pos);
     if (guardCount(o) >= (GUARDS[o.chapter] || GUARDS[1]).length || d < 0.15 || d > 1.5) { o.resupT = 0; continue; }
     if ((o.resupT += dt) >= 12) { o.resupT = 0; spawnGuards(o, false); }
@@ -2095,7 +2131,7 @@ function respawn() {
   state.pos.copy(w.spawn); state.pos.y += 0.003; state.vel.set(0, 0, 0);
   state.yaw = w.spawnYaw || 0; state.pitch = -0.05; state.onGround = false; physAcc = 0;
   resetMovers();
-  for (const o of w.objectives) if (o.type === 'nest' && !o.done) spawnGuards(o, true);
+  for (const o of w.objectives) if (o.type === 'nest' && !o.done && o.guarded) spawnGuards(o, true);
   for (const e of enemies) { e.returning = false; e.alarm = 0; }
 }
 function toLager() {
@@ -2103,6 +2139,8 @@ function toLager() {
   state.pos.copy(w.spawn); state.pos.y += 0.003; state.vel.set(0, 0, 0);
   state.yaw = w.spawnYaw || 0; state.pitch = -0.05; state.onGround = false; physAcc = 0;
   resetMovers();
+  releaseHook(false);
+  if (state.carrying) { state.carrying.mesh.visible = true; state.carrying = null; }
 }
 
 // ---------------- Schießen ----------------
@@ -2197,8 +2235,8 @@ const DEMO_OBJECTIVES = [
   { id: 'G', type: 'leuchtfeuer', chapter: 3, pos: [1.86, 2.005, 0.15], label: 'Leuchtfeuer' },
 ];
 const DEMO_UPDRAFTS = [
-  { x: 1.36, z: -1.42, r: 0.30, y0: 0.77, y1: 2.25, lift: 0.75 },   // Lampe
-  { x: 1.20, z: -1.50, r: 0.18, y0: 0.77, y1: 1.20, lift: 0.30 },   // Laptop
+  { x: 1.36, z: -1.42, r: 0.30, y0: 0.74, y1: 2.25, lift: 0.75 },   // Lampe
+  { x: 1.20, z: -1.50, r: 0.18, y0: 0.74, y1: 1.20, lift: 0.30 },   // Laptop
   { x: 0.10, z: 0.60, r: 0.25, y0: 0.0, y1: 0.60, lift: 0.28 },     // Sonnenfleck auf dem Teppich
 ];
 const DEMO_STRAYS = [[0.9, 0, -0.1], [-0.6, 0, 1.0], [1.3, 0, 0.9], [-1.0, 0, -1.55], [0.1, 0, -0.9], [-0.3, 0, 1.4]];
@@ -2336,6 +2374,16 @@ function recomputeChapter(announce = false) {
     toast(`Kapitel ${c} · ${CHAPTER_TITLES[c - 1]}`, c === 2 ? 'Mit dem Enterhaken (E) wird das Möbelgebirge begehbar.' : 'Der Gleiter trägt dich: Leertaste in der Luft.', 3.5);
   }
   state.chapter = c;
+  if (w.objectives) activateChapter(w);
+}
+// Wachen und Streuner erst, wenn ihr Kapitel erreicht ist: Kapitel 1 bleibt übersichtlich (2 Wachen + 3 Streuner)
+function activateChapter(w) {
+  for (const o of w.objectives) if (o.type === 'nest' && !o.done && o.chapter <= state.chapter && !o.guarded) { o.guarded = true; spawnGuards(o, true); }
+  if (w.pendingStrays) {
+    const rest = [];
+    for (const [s, ch] of w.pendingStrays) { if (ch <= state.chapter) { const e = spawnEnemy('milbe', s, { stray: true }); e.spawnT = 0; } else rest.push([s, ch]); }
+    w.pendingStrays = rest;
+  }
 }
 function completeObjective(o, silent = false) {
   if (o.done) return;
@@ -2371,8 +2419,9 @@ function initObjectives(w, sv) {
   state.carrying = null;
   recomputeChapter();
   updateObjectiveVisibility();
-  for (const o of w.objectives) if (o.type === 'nest' && !o.done) spawnGuards(o, true);
-  for (const s of gen.strays) { const e = spawnEnemy('milbe', s, { stray: true }); e.spawnT = 0; }
+  w.pendingStrays = gen.strays.map((s, i) => [s, i < 3 ? 1 : 2]);
+  for (const o of w.objectives) o.guarded = false;
+  activateChapter(w);
   for (const pk of gen.pickups) spawnCrumb(pk.pos, pk.kind);
 }
 function updateObjectiveVisibility() {
@@ -2563,7 +2612,8 @@ function updateGoalArrow() {
     mk.hidden = true; ed.hidden = false;
     let x = gmV.x, y = gmV.y;
     if (gmV.z > 1) { x = -x; y = -y; }
-    const l = Math.max(Math.abs(x) / 0.88, Math.abs(y) / 0.8, 1e-6);
+    const yTop = isTouch ? Math.min(0.8, 1 - 2 * 118 / H) : 0.8;   // Touch: oben bleibt die Mitte für „Sicht“ frei
+    const l = Math.max(Math.abs(x) / 0.88, (y > 0 ? y / yTop : -y / 0.8), 1e-6);
     x /= l; y /= l;
     ed.style.transform = `translate(${(x * 0.5 + 0.5) * W}px, ${(-y * 0.5 + 0.5) * H}px) translate(-50%, -50%)`;
     $('goal-edge-arrow').style.transform = `rotate(${Math.atan2(-y, x)}rad)`;
@@ -2930,8 +2980,12 @@ const GFX = { level: 'schoen', auto: true, lowT: 0, grace: 0, fps: 60, comp: nul
 const GFX_ORDER = ['schnell', 'schoen', 'kino'];
 const gfxHit = new THREE.Raycaster();
 
-async function loadPost() {
-  if (GFX.mods || GFX.loading || GFX.failed) return GFX.mods;
+function loadPost() {
+  if (!GFX.promise) GFX.promise = loadPostImpl();
+  return GFX.promise;
+}
+async function loadPostImpl() {
+  if (GFX.mods || GFX.failed) return GFX.mods;
   GFX.loading = true;
   try {
     const [ec, rp, gt, ub, bk, sp, op, vg, re] = await Promise.all([
@@ -2957,6 +3011,17 @@ function patchLogDepth(mat, near, far) {
   mat.uniforms.logNear = { value: near }; mat.uniforms.logFar = { value: far };
   mat.needsUpdate = true;
   return true;
+}
+// Kino-Nachbearbeitung freigeben (Renderziele, Passes, Umgebungs-Map), wenn die Stufe verlassen wird
+function disposeComposer() {
+  if (GFX.comp) {
+    for (const p of GFX.comp.passes) { try { p.dispose && p.dispose(); } catch (err) { console.warn(err); } }
+    try { GFX.comp.dispose(); } catch (err) { console.warn(err); }
+  }
+  for (const k of ['rp', 'gtao', 'bokeh', 'bloom', 'vig']) GFX[k] = null;
+  GFX.comp = null;
+  if (GFX.env) { GFX.env.dispose(); GFX.env = null; }
+  scene.environment = null;
 }
 function buildComposer() {
   const m = GFX.mods;
@@ -3044,8 +3109,8 @@ function setGfx(level, save = true) {
     if (sun.shadow.mapSize.x !== size) { sun.shadow.map?.dispose(); sun.shadow.map = null; sun.shadow.mapSize.set(size, size); }
   }
   if (GFX.comp) { GFX.comp.setPixelRatio(renderer.getPixelRatio()); GFX.comp.setSize(innerWidth, innerHeight); }
-  if (level === 'kino') loadPost().then(m => { if (m && GFX.level === 'kino') { buildComposer(); applyKinoScene(true); } else if (!m) setGfx('schoen', false); });
-  else applyKinoScene(false);
+  if (level === 'kino') loadPost().then(m => { if (m && GFX.level === 'kino') { buildComposer(); applyKinoScene(true); } else if (!m && GFX.level === 'kino') setGfx('schoen', false); });
+  else { applyKinoScene(false); disposeComposer(); }
 }
 function gfxDown() {
   const i = GFX_ORDER.indexOf(GFX.level);
