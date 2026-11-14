@@ -253,7 +253,7 @@ details li { margin-bottom: 4px; }
   .note { padding: 22px 18px 18px; }
   .controls-list { font-size: 13px; }
   #hud-bl { width: 44vw; }
-  #t-toy { bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+  #t-toy { bottom: calc(114px + env(safe-area-inset-bottom, 0px)); }
   .hud-box { padding: 6px 9px; }
   .hud-big { font-size: 18px; }
   #wave-line { font-size: 13px; }
@@ -265,6 +265,7 @@ details li { margin-bottom: 4px; }
 }
 /* Touch-Geräte: Tasten oberhalb von Lebenskraft und Munition, Tastatur-Hilfe durch Touch-Hilfe ersetzt */
 @media (pointer: coarse) {
+  #foto .btn, #foto .btn.small { min-height: 44px; }
   .kb-only { display: none !important; }
   .touch-only { display: grid; }
   #t-reload { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
@@ -283,7 +284,8 @@ details li { margin-bottom: 4px; }
   #toast small { font-size: 11px; margin-top: 2px; }
   #t-glide { right: calc(202px + env(safe-area-inset-right, 0px)); bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
   #toy-prompt { bottom: calc(112px + env(safe-area-inset-bottom, 0px)); max-width: 36vw; }
-  #boss-bar { width: 200px; right: auto; left: calc(50% + 50px); top: calc(12px + env(safe-area-inset-top, 0px)); }
+  #boss-bar { width: min(190px, calc(50vw - 150px)); right: auto; left: calc(50% + 34px); transform: none; top: calc(10px + env(safe-area-inset-top, 0px)); }
+  #toast { top: calc(66px + env(safe-area-inset-top, 0px)); }
 }
 </style>
 
@@ -1451,6 +1453,7 @@ function disposeObject(obj) {
 }
 function disposeWorld(w) {
   disposeObject(w.root);
+  w.sun?.shadow?.map?.dispose();
   if (w.collider) { w.collider.geometry.disposeBoundsTree?.(); w.collider.geometry.dispose(); w.collider = null; }
 }
 
@@ -1525,6 +1528,7 @@ function setMode(m) {
   $('hud').hidden = !(m === 'play' || m === 'paused' || m === 'dead' || m === 'won');
   if (m === 'menu' || m === 'calib' || m === 'foto') resetMovers();
   $('touch').hidden = !(isTouch && m === 'play');
+  if (m !== 'play') engineStop();
   if (m !== 'play' && document.pointerLockElement) document.exitPointerLock();
 }
 
@@ -3613,6 +3617,7 @@ function disposeToys() {
   if (state.riding) dismount(state.riding, true);
   for (const c of [...toyGroup.children]) { toyGroup.remove(c); disposeObject(c); }
   engineStop();
+  sparkPts = null; toyHud.pins.clear();
   if (state.world) { state.world.toys = []; }
   toyHud.boss = false;
 }
@@ -3639,7 +3644,15 @@ function initToys(w, sv) {
     }
     const toy = makeToy(p.id, foot, p.yaw);
     toy.found = w.toySave.found.includes(p.id);
-    if (p.id === 'knirsch') { toy.tamed = w.toySave.tamed; toy.nestId = 'N3'; }
+    if (p.id === 'knirsch') {
+      toy.tamed = w.toySave.tamed; toy.nestId = 'N3';
+      const n3 = (w.objectives || []).find(o => o.id === toy.nestId);
+      if (n3 && n3.done) {   // älterer Spielstand: Nest schon zerstört
+        toy.tamed = true; w.toySave.tamed = true;
+        const t6 = w.objectives.find(o => o.id === 'T6');
+        if (t6 && !t6.done) { t6.done = true; state.staub = Math.min(TOYC.staubMax, state.staub + 3); }
+      }
+    }
     w.toys.push(toy);
   }
   // Ringrennen-Ringe
@@ -3715,6 +3728,7 @@ function tryWakeToy(toy) {
   const w = state.world, ts = w.toySave;
   if (!gateOpen(toy)) { toast(`Schläft noch tief (Kapitel ${toy.chapter})`); sfx.nope(); return false; }
   if (toy.id === 'knirsch' && !toy.tamed) { toast('Knirsch schläft tief', 'Nur das Fusselnest auf dem Tisch kann ihn wecken.'); sfx.nope(); return false; }
+  if (state.carrying && toy.def.ride) { toast('Den Ohrstecker kannst du nur zu Fuß tragen'); sfx.nope(); return false; }
   if (toy.cd > 0) { toast(`${toy.def.name} ist noch müde`, `Noch ${Math.ceil(toy.cd)} Sekunden`); sfx.nope(); return false; }
   const free = toy.id === 'flitz' && !ts.freeUsed;
   const cost = free ? 0 : toy.cost;
@@ -3897,13 +3911,13 @@ function hurtEnemy(e, dmg, by, dirx = 0, dirz = 0, kb = 0.15) {
 }
 const bossToy = () => toyList().find(t => t.state === 'boss');
 function damageNest(nest, dmg, by = 'spieler') {
-  const boss = bossToy();
-  nest.hp -= boss ? dmg * 0.5 : dmg;
+  const boss = bossToy(), kp = toyById('knirsch');
+  nest.hp -= (boss || (kp && kp.pending > 0)) ? dmg * 0.5 : dmg;
   nest.flash = 0.12;
   for (const e of enemies) if (e.nest === nest) e.alarm = 6;
   if (nest.hp > 0 && nest.id === 'N3' && nest.hp <= 4) {
     const k = toyById('knirsch');
-    if (k && k.state === 'schlaf' && !k.tamed && k.pending <= 0 && !boss) startBossWake(k, nest);
+    if (k && k.state === 'schlaf' && !k.tamed && k.pending <= 0 && !boss && !nest.done) startBossWake(k, nest);
   }
   if (nest.hp <= 0) destroyNest(nest);
 }
@@ -3919,8 +3933,10 @@ function damageBoss(toy, dmg) {
   if (toy.hp <= 0) defeatBoss(toy, 'besiegt');
 }
 function defeatBoss(toy, why) {
-  if (toy.state !== 'boss') return;
-  sleepToy(toy, 'still');
+  if (toy.state !== 'boss' && !(toy.pending > 0)) return;
+  toy.pending = 0;
+  if (toy.state === 'boss') sleepToy(toy, 'still');
+  state.world.toyData.spark = null;
   toy.tamed = true; toy.cd = 0;
   const w = state.world; w.toySave.tamed = true;
   addStaub(3);
@@ -3936,7 +3952,7 @@ function damagePlayer(dmg) {
 }
 // Wird von destroyNest aufgerufen
 function toysOnNestDestroyed(o) {
-  const b = bossToy();
+  const b = bossToy() || toyList().find(t => t.pending > 0);
   if (b && o.id === b.nestId) defeatBoss(b, 'nest');
 }
 
@@ -3954,7 +3970,7 @@ function stepToysPhysics(h) {
     toy.cd = Math.max(0, toy.cd - h);
     toy.hitFlash = Math.max(0, toy.hitFlash - h);
     if (toy.wakeT > 0) toy.wakeT -= h;
-    if (toy.pending > 0) { toy.pending -= h; if (toy.pending <= 0 && toy.state === 'schlaf' && !dead) wakeToy(toy, 'nest'); }
+    if (toy.pending > 0) { toy.pending -= h; if (toy.pending <= 0 && toy.state === 'schlaf' && !dead) { const nst = state.world.objectives && state.world.objectives.find(o => o.id === toy.nestId); if (!(nst && nst.done)) wakeToy(toy, 'nest'); } }
     if (toy.state === 'schlaf') {
       if (!toy.body.onGround) { toyV.h.set(0, 0, 0); stepBody(bvh, toy.body, toyV.h, h, P.terminal); }
       toy.speed = 0;
@@ -4381,7 +4397,7 @@ function toyPins() {
 }
 function toyPromptInfo() {
   if (state.mode !== 'play' || state.respawnT > 0) return null;
-  if (state.riding) return { text: 'F: absteigen', btn: 'Absteigen' };
+  if (state.riding) return { text: isTouch ? 'Absteigen' : 'F: absteigen', btn: 'Absteigen' };
   const t = nearestSleeper();
   if (!t) return null;
   const d = t.def, ts = state.world.toySave;
@@ -4461,8 +4477,10 @@ function updateToyHud() {
     // unter den Eck-Anzeigen bleiben (Handy)
     let top = 12;
     if (isTouch || innerWidth < 640) { const a = $('hud-tl').getBoundingClientRect(), b = $('hud-tr').getBoundingClientRect(); top = Math.max(top, a.bottom + 6, b.bottom + 6, isTouch ? 108 : 0); }
-    E.boss.style.top = top + 'px';
-  } else if (toyHud.boss) { toyHud.boss = false; E.boss.hidden = true; toyHud.bossPct = -1; }
+    const land = matchMedia('(pointer: coarse) and (max-height: 500px)').matches;
+    E.boss.style.top = land ? '' : top + 'px';
+    const tt = $('toast'); if (tt) tt.style.top = (isTouch && !land) ? (top + E.boss.offsetHeight + 8) + 'px' : '';
+  } else if (toyHud.boss) { toyHud.boss = false; E.boss.hidden = true; toyHud.bossPct = -1; const tt = $('toast'); if (tt) tt.style.top = ''; }
 }
 
 // ---------------- Hauptschleife ----------------
@@ -4950,6 +4968,12 @@ const fotoFetch = async () => { const r = await idbDo('readonly', st => st.get(F
 const fotoRemove = () => idbDo('readwrite', st => st.delete(FOTO_KEY));
 
 // Speicher-Schlüssel des Fortschritts: Maße, Möbel und Fotos (Hash). Gleiche Fotos und Maße ergeben denselben Spielstand.
+function pruneFotoProgress(keepId) {   // alte Foto-Zimmer-Spielstände entfernen, nur der aktuelle bleibt
+  try {
+    const keep = keepId ? saveKey(keepId) : null, pre = saveKey('foto:');
+    for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith(pre) && k !== keep) localStorage.removeItem(k); }
+  } catch { /* egal */ }
+}
 function fotoIdFor(rec) {
   const sz = fotoSizes(rec.sizes);
   const photos = FOTO_SLOTS.map(s => rec.photos[s.key] ? s.key + ':' + hashStr(rec.photos[s.key]).toString(36) : '').join('|');
@@ -5062,6 +5086,7 @@ async function buildPhotoWorld(rec) {
     floor = M(0xffffff, { map: t, roughness: 0.6 });
   }
   const ceil = imgs.ceil ? six(3, photoMat(cropCanvas(imgs.ceil, W / D, 1024))) : M(0xece6d8);
+  if (imgs.ceil) { const ct = (Array.isArray(ceil) ? ceil[3] : ceil).map; if (ct) { ct.center.set(0.5, 0.5); ct.rotation = Math.PI; } }
 
   const root = new THREE.Group(), solid = new THREE.Group(), deco = new THREE.Group();
   root.add(solid, deco);
@@ -5139,7 +5164,7 @@ function initFotoUI() {
   $('foto-stretch').onchange = e => { foto.stretch = e.target.checked; };
   $('foto-back').onclick = () => showMenu();
   $('foto-build').onclick = () => { audio(); fotoBuild(); };
-  $('foto-delete').onclick = async () => { foto.saved = null; await fotoRemove(); refreshFotoMenu(); renderFoto(); setFotoMsg('Das gespeicherte Foto-Zimmer ist gelöscht.', true); };
+  $('foto-delete').onclick = async () => { foto.saved = null; foto.photos = {}; pruneFotoProgress(null); await fotoRemove(); refreshFotoMenu(); renderFoto(); setFotoMsg('Das gespeicherte Foto-Zimmer ist gelöscht.', true); };
   $('btn-foto').onclick = () => openFoto();
   $('btn-foto-play').onclick = async () => {
     audio();
@@ -5164,6 +5189,7 @@ function renderFoto() {
   $('foto-delete').hidden = !foto.saved;
 }
 let fotoQueue = Promise.resolve();   // Fotos werden nacheinander verarbeitet, nichts geht verloren, wenn schnell mehrere gewählt werden
+let fotoOver = '';   // Hinweis auf übrige Bilder, wird mit der Meldung zu unlesbaren Dateien zusammengelegt
 const fotoAssign = pairs => (fotoQueue = fotoQueue.then(() => fotoAssignNow(pairs), () => fotoAssignNow(pairs)));
 async function fotoAssignNow(pairs) {   // [[slotKey, File]]
   setFotoMsg('Foto wird verarbeitet …', true);
@@ -5173,7 +5199,9 @@ async function fotoAssignNow(pairs) {   // [[slotKey, File]]
     catch (e) { console.warn('Foto nicht lesbar:', file.name, e); bad.push(file.name || 'Bild'); }
   }
   setFotoMsg('');
-  if (bad.length) setFotoMsg(`Das Foto ließ sich nicht lesen (${bad.join(', ')}). Bitte als JPEG oder PNG aufnehmen.`);
+  if (bad.length) setFotoMsg(`Das Foto ließ sich nicht lesen (${bad.join(', ')}). Bitte als JPEG oder PNG aufnehmen.` + (fotoOver ? ` ${fotoOver}` : ''));
+  else if (fotoOver) setFotoMsg(fotoOver, true);
+  fotoOver = '';
   renderFoto();
 }
 async function fotoAssignMany(files) {
@@ -5182,8 +5210,8 @@ async function fotoAssignMany(files) {
   let free = FOTO_SLOTS.filter(s => !foto.photos[s.key]).map(s => s.key);
   if (!free.length) free = FOTO_SLOTS.map(s => s.key);   // alles belegt: von vorn überschreiben
   const used = files.slice(0, free.length);
+  if (files.length > free.length) fotoOver = `${files.length - free.length} Bild(er) übrig: Es gibt nur ${free.length} freie Plätze.`;
   await fotoAssign(used.map((f, i) => [free[i], f]));
-  if (files.length > free.length) setFotoMsg(`${files.length - free.length} Bild(er) übrig: Es gibt nur ${free.length} freie Plätze.`, true);
 }
 async function openFoto() {
   setMode('foto');
@@ -5206,6 +5234,7 @@ async function fotoBuild() {
   foto.sizes = fotoSizes({ W: parseFloat(String($('foto-w').value).replace(',', '.')), D: parseFloat(String($('foto-d').value).replace(',', '.')), H: parseFloat(String($('foto-h').value).replace(',', '.')) });
   const rec = { v: 1, sizes: { ...foto.sizes }, furniture: foto.furniture, stretch: foto.stretch, photos: {}, t: Date.now() };
   for (const s of have) rec.photos[s.key] = foto.photos[s.key].url;
+  pruneFotoProgress(fotoIdFor(rec));
   foto.saved = rec;   // im Speicher: "Mein Foto-Zimmer" geht auch, wenn der Browser IndexedDB sperrt
   $('foto-build').disabled = true;
   const saved = await fotoStore(rec);
