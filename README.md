@@ -16,9 +16,25 @@ Winzling ist ein Erkundungsspiel: Du startest im „Lager“ (dem Startpunkt), s
 | V | Ego-Sicht oder Außenansicht (Mausrad zoomt) |
 | Tab | Zielpfeil auf das nächste Ziel wechseln |
 | R | Nachladen |
+| F | Spielzeug wecken oder einschlafen lassen (am Spielzeug, oder wenn du reitest: absteigen). Auf dem Handy der Knopf „Wecken“ |
 | Esc | Pause (dort: „Zurück zum Lager“, Ansicht, Grafikstufe) |
 
-Auf dem Handy: links ein Touch-Stick zum Laufen, rechts Knöpfe für Feuer, Sprung, Haken, Gleiter, Laden und Sicht. Zum Umschauen wischst du auf dem Bildschirm.
+Auf dem Handy: links ein Touch-Stick zum Laufen, rechts Knöpfe für Feuer, Sprung, Haken, Gleiter, Laden, Sicht und (in der Nähe eines Spielzeugs) Wecken. Zum Umschauen wischst du auf dem Bildschirm.
+
+### Lebendige Spielsachen
+
+Sechs Spielzeuge liegen im Zimmer und schlafen grau. Mit **F** weckst du eins (Kosten: Funkenstaub, das erste Auto ist gratis). Pro Wecken hält es etwa 20 Sekunden Schlaf-Pause (Abklingzeit), und es kann immer nur ein von dir geweckter Helfer laufen.
+
+| Spielzeug | Rolle |
+| --- | --- |
+| Flitz (Auto) | Reiten, W/S Gas, A/D lenken, Shift Boost. Feder wird verbraucht, überfährt Kabel, rammt Fussel |
+| Schnurr (Aufzieh-Maus) | Lockt Fussel-Wächter von dir weg |
+| Hoppel (Schaukelpferd) | Reiten, Leertaste springt hoch (Sprunghöhe nach Haltedauer) |
+| Watte (Plüschbär) | Läuft mit, boxt Fussel in deiner Nähe |
+| Flatter (Holzvogel) | Reiten und fliegen, ab Kapitel 3 |
+| Knirsch (Gummi-Dino) | Boss: wacht auf, wenn das letzte Nest fast zerstört ist. Besiegen zähmt ihn |
+
+Beim Reiten ist die Außenansicht fest, Haken und Gleiter sind gesperrt. **Funkenstaub** (Anzeige oben links, bis 9) gibt es von Splittern (+2), Nestern (+3), besiegten Fusseln (+1), Bonusaufgaben (+2) und für Knirsch (+3). Bonusaufgaben (T1 bis T6, etwa das Ringrennen mit dem Auto in 20 Sekunden) stehen unter dem Ziel in der Liste und sind nie Pflicht. Im Foto-Raum sitzen die Spielsachen auf den passenden Möbeln, in eigenen Scans werden sie deterministisch auf begehbaren Flächen platziert.
 
 ### Ablauf
 
