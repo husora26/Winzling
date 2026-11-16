@@ -36,13 +36,21 @@ Sechs Spielzeuge liegen im Zimmer und schlafen grau. Mit **F** weckst du eins (K
 
 Beim Reiten ist die Außenansicht fest, Haken und Gleiter sind gesperrt. **Funkenstaub** (Anzeige oben links, bis 9) gibt es von Splittern (+2), Nestern (+3), besiegten Fusseln (+1), Bonusaufgaben (+2) und für Knirsch (+3). Bonusaufgaben (T1 bis T6, etwa das Ringrennen mit dem Auto in 20 Sekunden) stehen unter dem Ziel in der Liste und sind nie Pflicht. Im Foto-Raum sitzen die Spielsachen auf den passenden Möbeln, in eigenen Scans werden sie deterministisch auf begehbaren Flächen platziert.
 
+### Menü, Winzling-Editor und Einstellungen
+
+Das Menü sieht aus wie eine Schreibtischunterlage: Start mit **Spielen**, dann **Zimmer wählen** (Demo-Zimmer, Foto-Zimmer, Kamera-Zimmer, Scan laden), **Winzling gestalten**, **Einstellungen** und **Anleitung**. Esc geht eine Ebene zurück, alles ist mit der Tastatur erreichbar (Tab, Pfeiltasten in Tabs und Farbfeldern).
+
+**Winzling gestalten:** Körper (Statur, Kopf, Hautton), Gesicht (Augen, Brauen, Mund, Sommersprossen, Brille, Wangenrot), Haare, Kleidung (Oberteil, Hose, Schuhe, je mit Farbfeldern und eigener Farbe) und Ausrüstung (Rucksack, Schirm, Gleitermuster, Enterhaken). Die Vorschau dreht sich per Ziehen oder Pfeiltasten; Stehen, Laufen und Gleiten zeigen Animationen. **Zufall** würfelt, **Zurücksetzen** stellt den Standard her. Der Name hat höchstens 16 Zeichen. Gespeichert wird automatisch in `winzling.avatar`; der Winzling sieht in Außenansicht, Ego-Händen, Menü und Siegerbild gleich aus.
+
+**Einstellungen** (auch im Pausenmenü): Grafikstufe, Gesamtlautstärke (null ist still, auch der Motor) mit Stumm, Mausempfindlichkeit, Y-Achse umkehren und Empfindlichkeit für Umsehen per Touch. Alles wird in `winzling.settings` gemerkt; ist der Speicher kaputt oder gesperrt, gelten die Standardwerte.
+
 ### Ablauf
 
 1. **Bodenland:** 3 Glitzersplitter und das erste Fusselnest. Belohnung: der Enterhaken.
 2. **Möbelgebirge:** Splitter auf Karton, Stuhl und Kissen, dazu das Nest auf der Matratze. Belohnung: der Gleiter.
 3. **Gipfel:** Splitter auf Laptop und Fensterbrett, das Nest auf dem Tisch, der verlorene Ohrstecker im Regal (zurück ins Lager bringen) und das Leuchtfeuer auf dem obersten Regalbrett. Dorthin hilft der Aufwind der Schreibtischlampe.
 
-Den Fortschritt speichert der Browser (localStorage). Im Menü steht dann „Weiter (5/13)“ und „Neu beginnen“. Eigene Raum-Scans bekommen automatisch Ziele, Nester und Aufwinde: Die Platzierung ist deterministisch (gleicher Scan, gleiche Ziele) und prüft Erreichbarkeit über Laufen, Enterhaken und Aufwind.
+Den Fortschritt speichert der Browser (localStorage). Auf der Weltkarte „Demo-Zimmer“ steht dann „Kapitel 1 · 5/13 Ziele“ mit „Weiter“ und „Neu beginnen“ (mit Rückfrage). Eigene Raum-Scans bekommen automatisch Ziele, Nester und Aufwinde: Die Platzierung ist deterministisch (gleicher Scan, gleiche Ziele) und prüft Erreichbarkeit über Laufen, Enterhaken und Aufwind.
 
 ### Grafik
 
