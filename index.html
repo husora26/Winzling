@@ -150,7 +150,7 @@ body {
 .seg .btn:last-child { border-radius: 0 var(--r-paper) var(--r-paper) 0; }
 .seg .btn:hover:not([disabled]) { transform: none; box-shadow: none; }
 .seg .btn[aria-pressed="true"] { position: relative; z-index: 1; }
-.tabs { display: flex; flex-wrap: wrap; gap: var(--s2); overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 8px; margin: 0 0 var(--s3); scrollbar-width: none; touch-action: pan-x; }
+.tabs { display: flex; flex-wrap: wrap; gap: var(--s2); overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 8px; margin: 0 0 var(--s3); scrollbar-width: none; touch-action: pan-x pan-y; }
 .tab {
   scroll-snap-align: start; flex: 0 0 auto; min-height: 44px; padding: 8px 18px; border: 0; border-radius: 2px; cursor: pointer;
   font: 700 var(--fs-m) var(--font-body); color: var(--ink); background: var(--tape-solid);
@@ -227,7 +227,9 @@ body {
 .sheet { position: relative; background: var(--paper); color: var(--ink); padding: var(--s5) var(--s4) var(--s4); border-radius: var(--r-paper); box-shadow: var(--sh-lift); background-image: repeating-linear-gradient(0deg, transparent 0 27px, rgba(80,120,190,.14) 27px 28px); background-position: 0 14px; }
 .sheet::before { content: ""; position: absolute; top: -10px; left: 24px; width: 96px; height: 22px; transform: rotate(-2deg); background: var(--tape); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
 .sheet-head { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s3); }
-.sheet-head h2 { margin: 0; flex: 1; font-size: var(--fs-xl); line-height: 1.05; }
+.sheet-head > * { min-width: 0; }
+.sheet-head > .btn { flex: none; }
+.sheet-head h2 { margin: 0; flex: 1 1 0; min-width: 0; font-size: clamp(18px, 6.4vw, var(--fs-xl)); line-height: 1.05; overflow-wrap: anywhere; hyphens: auto; }
 .screen > .sheet { margin-top: 10px; }
 .worlds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); margin-top: var(--s3); }
 .worlds .card .ct { font-size: var(--fs-s); }
@@ -264,8 +266,12 @@ body {
 .sub-lbl { font-family: var(--font-hand); font-weight: 600; font-size: 20px; color: var(--ink); display: block; }
 
 /* ---------- Dialoge: Pause, Tod, Sieg ---------- */
-#pause .note { width: min(420px, 100%); }
+#pause .note { width: min(420px, calc(100vw - 24px)); max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+#pause-settings, .settings-body, #pause-settings-slot, #settings-slot { min-width: 0; max-width: 100%; }
+.tabs, .seg { max-width: 100%; }
+.settings-body .fine { overflow-wrap: anywhere; }
 #pause h2 { font-size: var(--fs-xl); }
+#pause .sheet-head h2 { font-size: clamp(18px, 6.4vw, var(--fs-xl)); }
 #pause-text { margin: 0 0 var(--s4); }
 .pause-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); margin: var(--s2) 0; }
 .pause-grid .btn { padding: 8px; }
@@ -343,9 +349,14 @@ body {
   #menu[data-screen="avatar"]::before { background: rgba(15,13,11,.5); }
   .worlds { grid-template-columns: 1fr; }
   .tabs { flex-wrap: nowrap; }
-  .ed { grid-template-columns: 1fr; grid-template-rows: 46% minmax(0, 1fr); }
-  .ed-card { margin: 0 8px 8px; max-height: none; }
+  #scr-avatar:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 38vh minmax(0, 1fr); height: 100%; min-height: 0; }
+  .ed { display: contents; }
+  .ed-card { margin: 0 8px 8px; max-height: none; min-height: 0; }
+  .ed-card .sheet-head { flex: none; flex-wrap: nowrap; height: 56px; box-sizing: border-box; padding: 4px 0; }
+  .ed-card .sheet-head h2 { font-size: clamp(15px, 4.8vw, 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; hyphens: none; }
+  .ed-body > .tabs { position: sticky; top: 56px; z-index: 2; background: var(--paper); margin: 0 0 var(--s2); padding: 6px 2px 8px; }
   .sheet { padding: var(--s5) var(--s3) var(--s3); }
+  .sheet.ed-card { padding-top: 0; }
 }
 @media (max-height: 500px) and (min-width: 640px) {
   #menu::before { width: 100%; background: rgba(15,13,11,.8); }
@@ -354,7 +365,7 @@ body {
   .start-head .hand { margin-bottom: var(--s3); }
   #scr-start { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--s5); align-items: start; }
   #scr-start[hidden] { display: none; }
-  .worlds { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 2px 10px; touch-action: pan-x; }
+  .worlds { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 2px 10px; touch-action: pan-x pan-y; }
   .worlds > * { flex: 0 0 230px; scroll-snap-align: start; }
   .ed { grid-template-columns: 40% minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
   .ed-card { margin: 8px 8px 8px 0; max-height: calc(100% - 16px); }
@@ -464,6 +475,13 @@ body {
   #toast { top: max(22%, calc(112px + env(safe-area-inset-top, 0px))); }
   #boss-bar { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); transform: none; top: calc(84px + env(safe-area-inset-top, 0px)); width: min(160px, 42vw); }
   #toy-prompt { left: max(12px, env(safe-area-inset-left, 0px)); transform: none; bottom: calc(190px + env(safe-area-inset-bottom, 0px)); white-space: normal; max-width: min(180px, calc(100vw - 240px)); font-size: 12px; }
+}
+/* Schmale Handys hochkant (320 px): Zielbox bleibt kompakt, Hinweis-Toast rutscht darunter */
+@media (pointer: coarse) and (max-width: 400px) and (min-height: 501px) {
+  #wave-line, #scale-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #goal-list li.sub { display: none; }
+  #toast { top: max(24%, calc(152px + env(safe-area-inset-top, 0px))); }
+  #boss-bar { top: calc(110px + env(safe-area-inset-top, 0px)); }
 }
 @media (pointer: coarse) and (max-height: 500px) {
   #toast { left: auto; right: calc(130px + env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: none; width: min(270px, 34vw); font-size: 15px; }
@@ -879,8 +897,25 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { MeshBVH, computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+
+// Statische Teile mit gleichem Material zu einem Mesh verschmelzen (ein Draw-Call statt vieler). Alle Matrizen sind auf `parent` bezogen.
+// Vorher parent.updateWorldMatrix(true, true) aufrufen. keep: Originale behalten (Variante), sonst werden sie entfernt.
+const _mmInv = new THREE.Matrix4(), _mmRel = new THREE.Matrix4();
+function mergeInto(parent, meshes, keep = false) {
+  if (!meshes.length) return null;
+  parent.updateWorldMatrix(true, false); _mmInv.copy(parent.matrixWorld).invert();
+  const geos = meshes.map(o => { o.updateWorldMatrix(true, false); _mmRel.multiplyMatrices(_mmInv, o.matrixWorld); return o.geometry.clone().applyMatrix4(_mmRel); });
+  const g = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+  if (!g) return null;
+  const m = new THREE.Mesh(g, meshes[0].material); m.castShadow = true; parent.add(m);
+  if (!keep) for (const o of meshes) o.removeFromParent();
+  return m;
+}
+const meshesOf = g => { const a = []; g.traverse(o => { if (o.isMesh) a.push(o); }); return a; };
+
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -1883,6 +1918,7 @@ function clearWorldDynamic() {
 
 function setMode(m) {
   state.mode = m;
+  if (m !== 'menu') clearMenuHistory();
   $('menu').hidden = m !== 'menu';
   $('calib').hidden = m !== 'calib';
   $('foto').hidden = m !== 'foto';
@@ -1921,6 +1957,12 @@ document.addEventListener('pointerlockchange', () => {
   hadLock = false;
 });
 
+// Menü-Hash und Zähler zurücksetzen, sobald das Menü verlassen wird (sonst landet Esc später im alten Untermenü)
+function clearMenuHistory() {
+  if (!ui.pushed && !location.hash) return;
+  ui.pushed = 0;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* egal */ }
+}
 function pause() {
   if (state.mode !== 'play') return;
   resetTouchInput();
@@ -1960,7 +2002,7 @@ addEventListener('keydown', e => {
     if (state.mode === 'menu') { if (goUp()) e.preventDefault(); return; }
     if (state.mode === 'foto') { e.preventDefault(); $('foto-back').click(); return; }
     if (state.mode === 'calib') { e.preventDefault(); $('calib-back').click(); return; }
-    if (state.mode === 'paused') { e.preventDefault(); if (!$('pause-settings').hidden) showPauseSettings(false); else resume(); return; }
+    if (state.mode === 'paused') { e.preventDefault(); if (!$('pause-settings').hidden) { showPauseSettings(false); $('btn-pause-set').focus({ preventScroll: true }); } else resume(); return; }
   }
   if (state.mode === 'play') {
     if (e.code === 'KeyR') reload();
@@ -3189,6 +3231,7 @@ function winGame(o) {
   for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
   saveProgress();
   setMode('won');
+  $('btn-again').focus({ preventScroll: true });
 }
 
 // ---------- Zielanzeige ----------
@@ -3607,6 +3650,9 @@ function makeSling() {
   const grip = new THREE.Mesh(new THREE.BoxGeometry(0.0016, 0.004, 0.002), dark); grip.position.set(0, -0.0024, 0.0022); grip.rotation.x = -0.3;
   const tip = new THREE.Mesh(new THREE.SphereGeometry(0.0004, 8, 6), new THREE.MeshBasicMaterial({ color: 0xf5b82e })); tip.position.set(0, 0.0005, -0.0085);
   g.add(body, rail, band, barrel, grip, tip);
+  tip.material = orange;   // winziger Punkt: gleiches Material wie die Schiene, damit alles in zwei Meshes passt
+  g.updateMatrixWorld(true);
+  mergeInto(g, [body, barrel, grip]); mergeInto(g, [rail, band, tip]);
   return g;
 }
 
@@ -3692,8 +3738,8 @@ function buildFigure(opts = {}) {
   const neck = fjoint(chest, 0, 0.22, 0);
   fmesh(gCyl(0.075, 0.085, 0.14, 8), m.skin, 0, 0.0, 0, neck);
   const headS = fjoint(neck, 0, 0.30, 0);          // Kopf-Gruppe (Skalierung normal/groß)
-  fmesh(gSph(0.28, 16, 12), m.skin, 0, 0, 0, headS);
-  for (const s of [-1, 1]) fmesh(gSph(0.06, 8, 6), m.skin, s * 0.285, -0.01, 0.01, headS);
+  const headMeshes = [fmesh(gSph(0.28, 16, 12), m.skin, 0, 0, 0, headS)];
+  for (const s of [-1, 1]) headMeshes.push(fmesh(gSph(0.06, 8, 6), m.skin, s * 0.285, -0.01, 0.01, headS));
   const faceGeo = gcache('face', () => new THREE.SphereGeometry(0.2845 * CM, 14, 8, Math.PI * 1.5 - 0.95, 1.9, Math.PI / 2 - 0.75, 1.5));
   const face = new THREE.Mesh(faceGeo, m.face); face.renderOrder = 2; headS.add(face);
   // Brille
@@ -3788,9 +3834,24 @@ function buildFigure(opts = {}) {
   const glider = fjoint(chest, 0, 0.17, 0.02); glider.visible = false;
   const wingG = gcache('wing', () => new THREE.PlaneGeometry(1.15 * CM, 0.85 * CM).rotateX(-Math.PI / 2));
   for (const s of [-1, 1]) { const w = fmesh(wingG, m.wing, s * 0.92, 0, 0.0, glider); w.rotation.z = s * -0.12; }
+  // Draw-Calls sparen: starre Teile je Material verschmelzen (Gelenke, die einzeln animiert werden, bleiben getrennt)
+  root.updateMatrixWorld(true);
+  mergeInto(headS, headMeshes);
+  for (const a of [aL, aR]) {
+    const skinParts = [a.fore, ...a.hand.children.filter(o => o.isMesh)];
+    a.fore = mergeInto(a.el, skinParts);
+    a.cap = a.sleeveS = mergeInto(a.sh, [a.cap, a.sleeveS]);
+  }
+  for (const k in hairG) {
+    if (k === 'zopf') { const bm = meshesOf(braid); mergeInto(braid, bm); mergeInto(hairG[k], meshesOf(hairG[k]).filter(o => !bm.includes(o) && o.parent !== braid)); }
+    else mergeInto(hairG[k], meshesOf(hairG[k]));
+  }
+  mergeInto(glasses, meshesOf(glasses));
+  const bibM = mergeInto(chest, [bib, ...straps]); straps.length = 0;
+  for (const l of [lL, lR]) { l.bootFoot = mergeInto(l.ank, [l.foot, l.shaft], true); l.bootFoot.material = m.shoe; }
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   const inst = {
-    root, body, preview: !!opts.preview, mats: m, tex, j: { hips, spine, chest, neck, headS, glasses, hairG, braid, aL, aR, lL, lR, collar, hood, bib, straps, skirt, packV, roll, umbF, hookG, umb, glider, sling, muzzle, torso },
+    root, body, preview: !!opts.preview, mats: m, tex, j: { hips, spine, chest, neck, headS, glasses, hairG, braid, aL, aR, lL, lR, collar, hood, bib: bibM, straps, skirt, packV, roll, umbF, hookG, umb, glider, sling, muzzle, torso },
     an: newAnim(), look: null,
   };
   inst.faceCanvas = [tex.open.image.getContext('2d'), tex.shut.image.getContext('2d')];
@@ -3825,7 +3886,7 @@ function applyLook(inst, look) {
   for (const l of [j.lL, j.lR]) {
     l.thigh.material = b === 'rock' ? m.skin : m.bottom; l.thigh.visible = b !== 'pluder'; l.balloon.visible = b === 'pluder';
     l.shin.material = b === 'lang' ? m.bottom : m.skin;
-    l.shaft.visible = o.shoes === 'stiefel'; l.sole.visible = o.shoes === 'sneaker'; l.foot.material = o.shoes === 'barfuss' ? m.skin : m.shoe;
+    const boot = o.shoes === 'stiefel'; l.bootFoot.visible = boot; l.foot.visible = !boot; l.shaft.visible = false; l.sole.visible = o.shoes === 'sneaker'; l.foot.material = o.shoes === 'barfuss' ? m.skin : m.shoe;
   }
   // Rucksack, Gleitermuster
   for (const k of LOOK_LISTS.pack) j.packV[k].visible = g.pack === k;
@@ -3909,7 +3970,8 @@ function animateInst(inst, pose, dt) {
   const wantMap = an.blinkOn ? inst.tex.shut : inst.tex.open;
   if (inst.mats.face.map !== wantMap) inst.mats.face.map = wantMap;
   const T = poseTargets(pose, an), k = 1 - Math.exp(-dt * 12);
-  for (const key in T) v[key] += (T[key] - v[key]) * k;
+  // Weiches Nachziehen, aber jede Größe höchstens ~8 rad/s (Mischwerte 3/s): kein Schnappen beim Zustandswechsel (< 0,2 rad pro Bild bei 60 Hz)
+  for (const key in T) { const lim = (key === 'aimW' || key === 'hang' ? 3 : 8) * dt, d = (T[key] - v[key]) * k; v[key] += d > lim ? lim : d < -lim ? -lim : d; }
   an.recoil *= Math.exp(-dt * 14); an.hit = Math.max(0, an.hit - dt);
   const hitZ = an.hit > 0 ? Math.sin(an.t * 70) * 0.12 * (an.hit / 0.25) : 0;
   const breath = Math.sin(an.t * Math.PI * 2 * 0.4) * 0.015;
@@ -3921,16 +3983,27 @@ function animateInst(inst, pose, dt) {
   j.neck.rotation.set(0, v.hdY * 0.4, 0); j.headS.rotation.set(v.hdX, v.hdY * 0.6, 0);
   // linker Arm (zum Anker per Quaternion)
   j.aL.sh.rotation.set(v.slX, 0, v.slZ);
-  if (v.hang > 0.01 && pose.anchor) {
+  if (pose.anchor) {
+    // Arm Richtung Anker als Euler-Winkel (X, Z) statt Quaternion-Slerp: Anker über dem Kopf liegt nahe an 180° vom Ruhezustand, dort kippt der kürzeste Weg
     root.updateMatrixWorld(true);
     animV.copy(pose.anchor); j.aL.sh.parent.worldToLocal(animV); animV.sub(j.aL.sh.position).normalize();
-    animQ.setFromUnitVectors(animDown, animV); j.aL.sh.quaternion.slerp(animQ, Math.min(1, v.hang));
+    const tz = Math.asin(THREE.MathUtils.clamp(animV.x, -1, 1));
+    let tx = Math.cos(tz) > 0.05 ? Math.atan2(-animV.z, -animV.y) : (an.hangX ?? v.slX);
+    if (an.hangX === undefined) an.hangX = v.slX;
+    tx += Math.PI * 2 * Math.round((an.hangX - tx) / (Math.PI * 2)); an.hangX = tx; an.hangZ = tz;
   }
+  if (v.hang > 0.001 && an.hangX !== undefined) {   // beim Loslassen klingt v.hang aus, der Arm kehrt weich zurück
+    const hw = Math.min(1, v.hang);
+    j.aL.sh.rotation.set(v.slX + (an.hangX - v.slX) * hw, 0, v.slZ + (an.hangZ - v.slZ) * hw);
+  } else an.hangX = undefined;
   j.aL.el.rotation.x = v.elX;
   // rechter Arm: zielt (Schleuder voraus, Blick hoch/runter) oder Pose
   const aimX = Math.PI / 2 + THREE.MathUtils.clamp(pose.pitch || 0, -1.2, 1.2) + an.recoil;
   j.aR.sh.rotation.set(THREE.MathUtils.lerp(v.srX, aimX, v.aimW), 0, THREE.MathUtils.lerp(v.srZ, 0, v.aimW));
   j.aR.el.rotation.x = THREE.MathUtils.lerp(v.erX, 0.04, v.aimW);
+  // Schultern kombinieren mehrere Größen (Zielen, Anker): letzte Sicherung gegen Sprünge, höchstens 0,12 rad je Achse pro 1/60 s
+  { const lr = an.lastSh || (an.lastSh = []), lim = 0.12 * dt * 60; let n = 0;
+    for (const sh of [j.aL.sh, j.aR.sh]) for (const ax of ['x', 'z']) { const cur = sh.rotation[ax], pr = lr[n]; if (pr !== undefined && dt < 0.1) sh.rotation[ax] = Math.abs(cur - pr) > lim ? pr + Math.sign(cur - pr) * lim : cur; lr[n++] = sh.rotation[ax]; } }
   j.lL.l.rotation.set(v.lgLX, 0, v.lgLZ); j.lR.l.rotation.set(v.lgRX, 0, v.lgRZ);
   j.lL.kn.rotation.x = v.knL; j.lR.kn.rotation.x = v.knR;
   j.lL.ank.rotation.x = -(v.lgLX + v.knL) * 0.35; j.lR.ank.rotation.x = -(v.lgRX + v.knR) * 0.35;
@@ -4149,12 +4222,12 @@ function stageFrame(dt) {
 function initStageInput() {
   const el = $('ed-stage'), ptrs = new Map();
   let pinch = 0;
-  el.addEventListener('pointerdown', e => { if (e.target.closest('.stage-ui')) return; el.setPointerCapture?.(e.pointerId); ptrs.set(e.pointerId, e.clientX); stage.idle = 3; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.abs(a - b); } });
+  el.addEventListener('pointerdown', e => { if (e.target.closest('.stage-ui')) return; el.setPointerCapture?.(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); stage.idle = 3; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); } });
   el.addEventListener('pointermove', e => {
     if (!ptrs.has(e.pointerId)) return;
-    const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, e.clientX);
-    if (ptrs.size === 1) { stage.yaw += (e.clientX - prev) * 0.011; stage.idle = 3; }
-    else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.abs(a - b); stage.zoomT = THREE.MathUtils.clamp(stage.zoomT + (d - pinch) * 0.006, 0, 1); pinch = d; }
+    const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 1) { stage.yaw += (e.clientX - prev.x) * 0.011; stage.idle = 3; }
+    else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); stage.zoomT = THREE.MathUtils.clamp(stage.zoomT + (d - pinch) * 0.006, 0, 1); pinch = d; }
   });
   const up = e => { ptrs.delete(e.pointerId); };
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
@@ -4331,6 +4404,7 @@ function setGfx(level, save = true) {
   renderer.setPixelRatio(level === 'schnell' ? 1 : Math.min(devicePixelRatio, level === 'kino' || isTouch ? 1.5 : 2));
   renderer.setSize(innerWidth, innerHeight);
   const soft = level !== 'schnell';
+  figure.traverse(o => { if (o.isMesh) o.castShadow = level !== 'schnell'; });   // Schnell: Figur wirft keinen Schatten (spart ~die Hälfte ihrer Draw-Calls)
   if ((renderer.shadowMap.type === THREE.PCFSoftShadowMap) !== soft) {
     renderer.shadowMap.type = soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     scene.traverse(o => { if (o.material) [o.material].flat().forEach(m => { m.needsUpdate = true; }); });
@@ -4357,7 +4431,10 @@ function gfxWatch(rawDt) {
   if (GFX.grace > 0) { GFX.grace -= rawDt; GFX.lowT = 0; return; }
   if (GFX.fps < 25) { GFX.lowT += rawDt; if (GFX.lowT > 3) { GFX.lowT = 0; GFX.grace = 4; gfxDown(); } } else GFX.lowT = 0;
 }
+const edCoverMQ = matchMedia('(max-width: 700px) and (orientation: portrait)');
 function renderFrame(dt) {
+  // Handy hochkant: der Editor deckt das Bild fast ganz ab, die Zimmerszene dahinter wird nicht gezeichnet
+  if (state.mode === 'menu' && ui.screen === 'avatar' && edCoverMQ.matches) { renderer.setRenderTarget(null); renderer.clear(); return; }
   const kinoMode = GFX.level === 'kino' && GFX.comp && (state.mode === 'play' || state.mode === 'paused' || state.mode === 'dead' || state.mode === 'won');
   if (!kinoMode) { renderer.render(scene, activeCam); return; }
   GFX.rp.camera = activeCam; if (GFX.gtao) GFX.gtao.camera = activeCam; GFX.bokeh.camera = activeCam;
@@ -5978,7 +6055,7 @@ function showScreen(name, opts = {}) {
   };
   ui.screen = name;
   if (push && name !== from) { try { history.pushState({ wz: name }, '', '#' + name); ui.pushed++; } catch { /* Frame erlaubt nur einfache Hashes oder gar keine */ } }
-  if (instant || from === name || reducedMotion() && false) { apply(); return; }
+  if (instant || from === name || reducedMotion()) { apply(); return; }
   const old = $('scr-' + from); if (old) old.classList.add('out');
   ui.timer = setTimeout(apply, 120);
 }
@@ -5992,6 +6069,7 @@ function goUp() {
 }
 addEventListener('popstate', () => {
   ui.pushed = Math.max(0, ui.pushed - 1);
+  if (state.mode === 'play') { pause(); return; }
   if (state.mode !== 'menu') return;
   const h = location.hash.replace('#', '');
   showScreen(SCREENS.includes(h) ? h : 'start', { push: false });
@@ -6220,7 +6298,7 @@ function leaveEditor() { if (ui.saveT) edSaveNow(); }
 addEventListener('resize', () => { if (ui.edBuilt) $('ed-tabs').classList.toggle('v', edVertical()); });
 
 // ---------------- Menü ----------------
-function showMenu(screen = 'start') {
+function showMenu(screen = 'start', boot = false) {
   clearWorld();
   refreshMenuSave();
   refreshFotoMenu();
@@ -6229,6 +6307,7 @@ function showMenu(screen = 'start') {
   orbitCam.near = 0.002; orbitCam.far = 60; orbitCam.updateProjectionMatrix();
   setMode('menu');
   showScreen(screen, { push: false, instant: true, focus: false });
+  if (!boot) { const f = screen === 'start' ? $('btn-play') : $(SCREEN_HEAD[screen]); if (f) f.focus({ preventScroll: true }); }
 }
 const playDemo = fresh => { audio(); setWorld(getDemoWorld()); startGame(fresh); lockPointer(); };
 $('btn-demo').onclick = () => playDemo(false);
@@ -6620,7 +6699,7 @@ window.__winzling = {
   buildObjectives, generateScanObjectives, SCAN_STATS, DEMO_OBJECTIVES, toggleView, spawnCrumb, setWorld, getDemoWorld, updateView, seedFrom, winGame, objectsOf: () => state.world.objectives,
 };
 
-showMenu();
+showMenu('start', true);
 setView(lsGet('winzling.view') === 'tp' ? 'tp' : 'fp', false);
 setGfx(lsGet('winzling.gfx') || (isTouch ? 'schnell' : 'schoen'), false);
 frame();

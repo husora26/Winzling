@@ -17,7 +17,7 @@ Winzling ist ein Erkundungsspiel: Du startest im „Lager“ (dem Startpunkt), s
 | Tab | Zielpfeil auf das nächste Ziel wechseln |
 | R | Nachladen |
 | F | Spielzeug wecken oder einschlafen lassen (am Spielzeug, oder wenn du reitest: absteigen). Auf dem Handy der Knopf „Wecken“ |
-| Esc | Pause (dort: „Zurück zum Lager“, Ansicht, Grafikstufe) |
+| Esc | Pause (dort: Fortsetzen, Zurück zum Lager, Einstellungen, Hauptmenü) |
 
 Auf dem Handy: links ein Touch-Stick zum Laufen, rechts Knöpfe für Feuer, Sprung, Haken, Gleiter, Laden, Sicht und (in der Nähe eines Spielzeugs) Wecken. Zum Umschauen wischst du auf dem Bildschirm.
 
